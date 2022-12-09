@@ -75,6 +75,7 @@ parser.add_argument('--chromatic', action='store_true')
 parser.add_argument('--galcut', type=float, required= False)
 parser.add_argument('--noPCA', action='store_true')
 parser.add_argument('--append')
+parser.add_argument('--combineSigma', type=float, required=False)
 args=parser.parse_args()
 
 for arg in vars(args):
@@ -82,7 +83,7 @@ for arg in vars(args):
 
 if __name__=='__main__':
     #load ulsa map
-    fg=fitsio.read('~/LuSEE/ml/200.fits')
+    fg=fitsio.read('/home/rugved/Files/LuSEE/ml/200.fits')
     print(fg.shape)
     
     #smooth with chromatic/achromatic beam
@@ -98,9 +99,29 @@ if __name__=='__main__':
         data=get_data_noPCA(fgsmooth_cut)
     else:
         data=get_data_PCA(fgsmooth_cut)
+        
+    #combine with another sigma by concatenating
+    if args.combineSigma is not None:
+        fgsmooth2=smooth(fg,args.combineSigma,one_over_f=args.chromatic)
+      
+        if args.galcut is not None:
+            fgsmooth_cut2=galaxy_cut(fgsmooth2,args.galcut)
+        else:
+            fgsmooth_cut2=fgsmooth2
+        print(fgsmooth_cut.shape, fgsmooth_cut2.shape)
+        #do PCA or not
+        if args.noPCA: 
+            data=get_data_noPCA(np.vstack([fgsmooth_cut,fgsmooth_cut2]))
+        else:
+            data=get_data_PCA(np.vstack([fgsmooth_cut,fgsmooth_cut2]))
+        
+        print(f'Also combining with sigma {args.combineSigma} to get data.shape {data.shape}')
+        
+           
+   
 
     #train
-    fname=f'/hpcgpfs01/scratch/rugvedpund/LuSEE/ml/GIS_ulsa_nside128_sigma{args.sigma}_subsample{args.subsample_factor}_galcut{args.galcut}_chromaticBeam{args.chromatic}'
+    fname=f'/home/rugved/Files/LuSEE/ml/GIS_ulsa_nside128_sigma{args.sigma}_subsample{args.subsample_factor}_galcut{args.galcut}_noPCA{args.noPCA}_chromaticBeam{args.chromatic}_combineSigma{args.combineSigma}'
     if args.append: fname+=args.append
     print(fname)
     train(data, args.subsample_factor, fname)
