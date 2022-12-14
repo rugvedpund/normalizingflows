@@ -8,7 +8,13 @@ import matplotlib
 import healpy as hp
 from lusee.NormalizingFlow import *
 
-
+def generate_noise(fg,noise_K,subsample,seed=0):
+    nfreq,ndata=fg.shape
+    np.random.seed(seed)
+    noise_sigma=noise_K*np.sqrt(ndata/subsample)
+    noise=np.random.normal(0,noise_sigma,(nfreq,ndata))
+    return noise
+    
 def smooth(fg,sigma,one_over_f):
     print(f'smoothing with {sigma} deg, and chromatic {one_over_f}')
     fgsmooth=np.zeros_like(fg)
@@ -76,6 +82,8 @@ parser.add_argument('--galcut', type=float, required= False)
 parser.add_argument('--noPCA', action='store_true')
 parser.add_argument('--append')
 parser.add_argument('--combineSigma', type=float, required=False)
+parser.add_argument('--noise', type=float, default=0.0, required=False)
+parser.add_argument('--noiseSeed', type=int, default=0, required=False)
 args=parser.parse_args()
 
 for arg in vars(args):
@@ -86,8 +94,13 @@ if __name__=='__main__':
     fg=fitsio.read('/home/rugved/Files/LuSEE/ml/200.fits')
     print(fg.shape)
     
+    #add noise
+    noise=generate_noise(fg,args.noise,subsample=args.subsample_factor, seed=args.noiseSeed)
+    fg_noisy=fg+noise
+
+    
     #smooth with chromatic/achromatic beam
-    fgsmooth=smooth(fg, sigma=args.sigma, one_over_f=args.chromatic)
+    fgsmooth=smooth(fg_noisy, sigma=args.sigma, one_over_f=args.chromatic)
     
     if args.galcut is not None:
         fgsmooth_cut=galaxy_cut(fgsmooth,args.galcut)
@@ -121,7 +134,7 @@ if __name__=='__main__':
    
 
     #train
-    fname=f'/home/rugved/Files/LuSEE/ml/GIS_ulsa_nside128_sigma{args.sigma}_subsample{args.subsample_factor}_galcut{args.galcut}_noPCA{args.noPCA}_chromaticBeam{args.chromatic}_combineSigma{args.combineSigma}'
+    fname=f'/home/rugved/Files/LuSEE/ml/GIS_ulsa_nside128_sigma{args.sigma}_subsample{args.subsample_factor}_galcut{args.galcut}_noPCA{args.noPCA}_chromaticBeam{args.chromatic}_combineSigma{args.combineSigma}_noise{args.noise}_seed{args.noiseSeed}'
     if args.append: fname+=args.append
     print(fname)
     train(data, args.subsample_factor, fname)
