@@ -1,3 +1,4 @@
+import time
 import torch
 from sinf import GIS
 import matplotlib.pyplot as plt
@@ -90,6 +91,8 @@ for arg in vars(args):
     print(arg, getattr(args, arg))
 
 if __name__=='__main__':
+    time_start=time.time()
+
     #load ulsa map
     fg=fitsio.read('/home/rugved/Files/LuSEE/ml/200.fits')
     print(fg.shape)
@@ -139,4 +142,5 @@ if __name__=='__main__':
     print(fname)
     train(data, args.subsample_factor, fname)
         
-
+    time_end=time.time()-time_start
+    print('Time taken to complete:', time_end//60,'mins')
