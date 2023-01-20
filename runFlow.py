@@ -7,7 +7,7 @@ import fitsio
 import lusee
 import matplotlib
 import healpy as hp
-from lusee.NormalizingFlow import *
+from NormalizingFlow import *
 
 def generate_noise(fg,noise_K,subsample,seed=0):
     nfreq,ndata=fg.shape

@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import lusee
 import matplotlib
-import lusee.NormalizingFlow as nf
+import NormalizingFlow as nf
 import fitsio
 import argparse
 import os
