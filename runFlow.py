@@ -94,7 +94,7 @@ if __name__=='__main__':
     time_start=time.time()
 
     #load ulsa map
-    fg=fitsio.read('/home/rugved/Files/LuSEE/ml/200.fits')
+    fg=fitsio.read('/astro/u/rugvedpund/LuSEE/ml/200.fits')
     print(fg.shape)
     
     #add noise
@@ -137,7 +137,7 @@ if __name__=='__main__':
    
 
     #train
-    fname=f'/home/rugved/Files/LuSEE/ml/GIS_ulsa_nside128_sigma{args.sigma}_subsample{args.subsample_factor}_galcut{args.galcut}_noPCA{args.noPCA}_chromaticBeam{args.chromatic}_combineSigma{args.combineSigma}_noise{args.noise}_seed{args.noiseSeed}'
+    fname=f'/astro/u/rugvedpund/LuSEE/ml/GIS_ulsa_nside128_sigma{args.sigma}_subsample{args.subsample_factor}_galcut{args.galcut}_noPCA{args.noPCA}_chromaticBeam{args.chromatic}_combineSigma{args.combineSigma}_noise{args.noise}_seed{args.noiseSeed}'
     if args.append: fname+=args.append
     print(fname)
     train(data, args.subsample_factor, fname)
