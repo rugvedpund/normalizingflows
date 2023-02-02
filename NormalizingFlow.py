@@ -19,7 +19,7 @@ class NormalizingFlow:
         except FileNotFoundError:
             print('no file found, need to train')
         self.precompute_data_after=dict()
-    def train(self,train_data,validate_data,nocuda,savePath=None):
+    def train(self,train_data,validate_data,nocuda,savePath):
         """
         data must be of shape (nsamples, ndim)
         """
@@ -30,9 +30,8 @@ class NormalizingFlow:
         self.model=GIS.GIS(self.train_data.clone(),self.validate_data.clone(),nocuda=nocuda)
         self.nlayer=len(self.model.layer)
         print('Total number of iterations: ', len(self.model.layer))
-        if savePath is not None: 
-            torch.save(self.model,savePath)
-            print('model saved at', savePath)
+        torch.save(self.model,savePath)
+        print('model saved at', savePath)
     def _toTensor(self,nparray):
         return torch.from_numpy(nparray).float().to(self.device)
     def plotDataToGaussian(self,data,label=None, niterationSteps=8):

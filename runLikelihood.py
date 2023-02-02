@@ -46,7 +46,7 @@ freqs=np.arange(1,51)
 t21=10*lusee.mono_sky_models.T_DarkAges_Scaled(freqs,nu_rms=14,A=0.04)
 flow.set_t21(t21, include_noise=args.noisyT21)
 
-a=np.linspace(9.0,11.0,num=100)
+a=np.linspace(9.0,11.0,num=50)
 l=[flow._likelihood(flow.fgmeansdata+(10-aa)*flow.t21data).cpu().numpy() for aa in a]
 l=np.array(l).flatten()
 
