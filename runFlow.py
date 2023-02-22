@@ -82,7 +82,7 @@ def get_data_noPCA(data):
     out=((data - data.mean(axis=1)[:,None])/rms[:,None]).T
     return np.random.permutation(out)
 
-def better_subsample(fgsmooth, sigma, galcut):
+def better_subsample(fgsmooth, sigma, galcut, vector=None):
     print(f'doing smart sampling for sigma={sigma} using nside={sigma2nside(sigma)}')
     
     #subsample fgsmooth
@@ -111,7 +111,10 @@ def better_subsample(fgsmooth, sigma, galcut):
     out=(proj_fg/rms[:,None]).T #divide by rms, transpose for pytorch
     out=np.random.permutation(out)
     # print(f'{fgsmooth.shape=}, {fg_subsample.shape=}, {proj_fg.shape=}, {out.shape=}')
-    return np.random.permutation(out)
+    if vector is not None:
+        return out, (eve.T@vector)/rms
+    else:
+        return out
 
 def train(data, subsample_factor, sigma, galcut, fname):
     print('training...')

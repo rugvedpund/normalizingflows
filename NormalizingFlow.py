@@ -169,7 +169,7 @@ class FlowAnalyzer(NormalizingFlow):
         self.noiseSeed=noiseSeed
         self.combineSigma=combineSigma
         
-        self.noise=self.generate_noise(self.fg,self.noise_K,self.subsample,self.noiseSeed)
+        self.noise=self.generate_noise(self.fg,self.noise_K,self.subsample,self.sigma,self.noiseSeed)
         self.fg_noisy=self.fg+self.noise
         self.fgsmooth=self.smooth(self.fg_noisy,self.sigma,self.chromatic)
         
@@ -177,37 +177,52 @@ class FlowAnalyzer(NormalizingFlow):
             self.fgsmooth_cut=self.galaxy_cut(self.fgsmooth,self.galcut)
         else:
             self.fgsmooth_cut=self.fgsmooth
-            
-        if self.noPCA: 
-            self.data,self.fgmeansdata=self.get_data_noPCA(self.fgsmooth_cut, vector=self.fgsmooth_cut.mean(axis=1))
-        else:
-            self.data,self.fgmeansdata=self.get_data_PCA(self.fgsmooth_cut, vector=self.fgsmooth_cut.mean(axis=1))
-        
-        if self.combineSigma is not None:
-            self.fgsmooth2=self.smooth(self.fg,self.combineSigma,self.chromatic)
-            if self.galcut is not None:
-                self.fgsmooth_cut2=self.galaxy_cut(self.fgsmooth2,self.galcut)
-            else:
-                self.fgsmooth_cut2=self.fgsmooth2
-            self.fgsmoothcut_combineSigma=np.vstack([self.fgsmooth_cut,self.fgsmooth_cut2])
+        if self.subsample is not None:
             if self.noPCA: 
-                self.data,self.fgmeansdata=self.get_data_noPCA(self.fgsmoothcut_combineSigma, vector=self.fgsmoothcut_combineSigma.mean(axis=1))
+                self.data,self.fgmeansdata=self.get_data_noPCA(self.fgsmooth_cut, vector=self.fgsmooth_cut.mean(axis=1))
             else:
-                self.data,self.fgmeansdata=self.get_data_PCA(self.fgsmoothcut_combineSigma, vector=self.fgsmoothcut_combineSigma.mean(axis=1))
+                self.data,self.fgmeansdata=self.get_data_PCA(self.fgsmooth_cut, vector=self.fgsmooth_cut.mean(axis=1))
 
-            
-        assert self.data.shape[0]>self.data.shape[1]
-        assert self.subsample>=3
-        print(f'subsampling {self.subsample}')
-        self.train_data=self.data[::self.subsample,:]
-        self.validate_data=self.data[1::self.subsample,:]
-        self.test_data=self.data[2::self.subsample,:]
-        print('done! self.train_data,validate_data and test_data ready')
+            if self.combineSigma is not None:
+                self.fgsmooth2=self.smooth(self.fg,self.combineSigma,self.chromatic)
+                if self.galcut is not None:
+                    self.fgsmooth_cut2=self.galaxy_cut(self.fgsmooth2,self.galcut)
+                else:
+                    self.fgsmooth_cut2=self.fgsmooth2
+                self.fgsmoothcut_combineSigma=np.vstack([self.fgsmooth_cut,self.fgsmooth_cut2])
+                if self.noPCA: 
+                    self.data,self.fgmeansdata=self.get_data_noPCA(self.fgsmoothcut_combineSigma, vector=self.fgsmoothcut_combineSigma.mean(axis=1))
+                else:
+                    self.data,self.fgmeansdata=self.get_data_PCA(self.fgsmoothcut_combineSigma, vector=self.fgsmoothcut_combineSigma.mean(axis=1))
+            assert self.data.shape[0]>self.data.shape[1]
+            print(f'subsampling {self.subsample}')
+            self.train_data=self.data[::self.subsample,:]
+            self.validate_data=self.data[1::self.subsample,:]
+            self.test_data=self.data[2::self.subsample,:]
+            print('done! self.train_data,validate_data and test_data ready')
 
-    def generate_noise(self,fg,noise_K,subsample,seed=0):
+        else:
+            self.data, self.fgmeansdata=self.better_subsample(self.fgsmooth, self.sigma, self.galcut,
+                                                             vector=self.fgsmooth_cut.mean(axis=1))
+            assert self.data.shape[0]>self.data.shape[1]
+            print(f'better subsampling')
+            ndata,nfreq=self.data.shape
+            ntrain=int(0.8*ndata)
+            self.train_data=self.data[:ntrain,:]
+            self.validate_data=self.data[ntrain:,:]
+            print('done! better self.train_data,validate_data and test_data ready')
+
+    def generate_noise(self,fg,noise_K,subsample,sigma=None,seed=0):
         nfreq,ndata=fg.shape
         np.random.seed(seed)
-        noise_sigma=noise_K*np.sqrt(ndata/subsample)
+        if subsample is not None:
+            npix=ndata/subsample
+        else:
+            assert sigma is not None
+            nside=self.sigma2nside(sigma)
+            npix=hp.nside2npix(nside)
+
+        noise_sigma=noise_K*np.sqrt(npix)
         noise=np.random.normal(0,noise_sigma,(nfreq,ndata))
         return noise
     
@@ -250,7 +265,7 @@ class FlowAnalyzer(NormalizingFlow):
         if vector is None: 
             return out
         else:
-            return out, (eve.T@vector)/rms
+            return out, (eve.T@vector.copy())/rms
 
     def get_data_noPCA(self, data, vector=None):
         print('not doing PCA')
@@ -261,34 +276,88 @@ class FlowAnalyzer(NormalizingFlow):
         if vector is None:
             return out
         else:
-            return out, vector/rms
-    
-    def set_t21(self, t21, include_noise):
+            return out, vector.copy()/rms
+
+    def better_subsample(self, fgsmooth, sigma, galcut, vector=None):
+        print(f'doing smart sampling for sigma={sigma} using nside={self.sigma2nside(sigma)}')
+
+        #subsample fgsmooth
+        nside=self.sigma2nside(sigma)
+        ipix=np.arange(hp.nside2npix(nside))
+        theta,phi=hp.pix2ang(nside,ipix)
+        ipix_128=hp.ang2pix(128,theta,phi)
+        gal=hp.query_strip(nside,np.pi/2-np.deg2rad(galcut),np.pi/2+np.deg2rad(galcut),
+                   inclusive=False)
+        galpix_128=hp.ang2pix(*(128,*hp.pix2ang(nside,gal)))
+        maskpix=np.setdiff1d(ipix_128,galpix_128)
+        print(fgsmooth.shape)
+        fg_subsample=fgsmooth[:,maskpix].copy()
+        self.fg_bettersample=fg_subsample.copy()
+
+        #galcut and do PCA
+        print('doing internal PCA...')
+        fgsmooth_cut=self.galaxy_cut(fgsmooth,galcut) 
+        cov=np.cov(fgsmooth_cut)
+        eva,eve=np.linalg.eig(cov)
+        s=np.argsort(np.abs(eva))[::-1] 
+        eva,eve=np.real(eva[s]),np.real(eve[:,s])
+
+        #project subsampled fg
+        proj_fg=eve.T@(fg_subsample-fg_subsample.mean(axis=1)[:,None])
+        rms=np.sqrt(proj_fg.var(axis=1))
+        out=(proj_fg/rms[:,None]).T #divide by rms, transpose for pytorch
+        out=np.random.permutation(out)
+        # print(f'{fgsmooth.shape=}, {fg_subsample.shape=}, {proj_fg.shape=}, {out.shape=}')
+        if vector is not None:
+            return out, (eve.T@vector)/rms
+        else:
+            return out
+
+
+    def sigma2nside(self, sigma):
+        #done by hand
+        sigma2nside_map={0.5:64, 1.0:32, 2.0:16, 4.0:8, 8.0:4}
+        try:
+            nside=sigma2nside_map[sigma]
+        except KeyError:
+            print('sigmas must be either 0.5, 1.0, 2.0, 4.0, or 8.0')
+            raise NotImplementedError
+        return sigma2nside_map[sigma]
+
+    def set_t21(self, t21, include_noise, overwrite):
         if self.combineSigma is not None:
             print(f'combining sigma {self.sigma} with combineSigma {self.combineSigma}')
             if include_noise: 
                 t21+=self.noise.mean(axis=1)
                 print('including noise in t21')
-            self.t21=np.hstack([t21,t21])
-            print(self.t21.shape, self.fgsmoothcut_combineSigma.shape)
+            combine_t21=np.hstack([t21,t21])
+            if overwrite: self.t21=combine_t21
+            print('combine_t21.shape=',combine_t21.shape, 'fg_smooth_cut_combine.shape=',self.fgsmoothcut_combineSigma.shape)
             print(f'projecting t21 according to noPCA={self.noPCA}')
             if self.noPCA:
-                _,self.t21data=self.get_data_noPCA(self.fgsmoothcut_combineSigma, self.t21)
+                _,t21data=self.get_data_noPCA(self.fgsmoothcut_combineSigma, combine_t21)
             else:
-                _,self.t21data=self.get_data_PCA(self.fgsmoothcut_combineSigma, self.t21)
-            print('done! self.t21data ready')
+                _,t21data=self.get_data_PCA(self.fgsmoothcut_combineSigma, combine_t21)
         else:
             if include_noise: 
                 t21+=self.noise.mean(axis=1)
                 print('including noise in t21')
-            self.t21=t21
+            if overwrite: self.t21=t21
             print(f'projecting t21 according to noPCA={self.noPCA}')
-            if self.noPCA:
-                _,self.t21data=self.get_data_noPCA(self.fgsmooth_cut, self.t21)
+            if self.subsample is not None:
+                if self.noPCA:
+                    _,t21data=self.get_data_noPCA(self.fgsmooth_cut, t21)
+                else:
+                    _,t21data=self.get_data_PCA(self.fgsmooth_cut, t21)
             else:
-                _,self.t21data=self.get_data_PCA(self.fgsmooth_cut, self.t21)
+                _,t21data=self.better_subsample(self.fgsmooth, self.sigma, self.galcut, vector=t21)
+        
+        if overwrite:
+            self.t21data=t21data
             print('done! self.t21data ready')
-            
+        else:
+            print('done! t21data returned')
+            return t21data
         
 def load_ulsa_t21_tcmb_freqs():
     root='/home/rugved/Files/LuSEE/luseepy/Drive/'
