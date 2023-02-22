@@ -19,7 +19,7 @@ parser.add_argument('--combineSigma', type=float, required=False)
 parser.add_argument('--noise', type=float, default=0.0, required=False)
 parser.add_argument('--noiseSeed', type=int, default=0, required=False)
 parser.add_argument('--noisyT21', action='store_true')
-parser.add_argument('--DAx1', action='store_true')
+parser.add_argument('--DA_factor', type=float, required=True)
 args=parser.parse_args()
 
 for arg in vars(args):
@@ -45,15 +45,14 @@ flow.set_fg(fg=fg,sigma=args.sigma,chromatic=args.chromatic,galcut=args.galcut,n
 print('setting t21...')
 freqs=np.arange(1,51)
 
-DA_factor=1 if args.DAx1 else 10
 t21=lusee.mono_sky_models.T_DarkAges_Scaled(freqs,nu_rms=14,A=0.04)
 flow.set_t21(t21, include_noise=args.noisyT21,overwrite=True)
 
-a=np.linspace(-2.0,4.0,num=50) if args.DAx1 else np.linspace(9.0,11.0,num=50)
+a=np.linspace(max(0,args.DA_factor-2.0),args.DA_factor+2.0,num=100)
 
-l=[flow._likelihood(flow.fgmeansdata+(DA_factor-aa)*flow.t21data).cpu().numpy() for aa in a]
+l=[flow._likelihood(flow.fgmeansdata+(args.DA_factor-aa)*flow.t21data).cpu().numpy() for aa in a]
 l=np.array(l).flatten()
 
-fname+=f'_noisyT21{args.noisyT21}_1x{args.DAx1}'
+fname+=f'_noisyT21{args.noisyT21}_DA_factor{args.DA_factor}'
 print(f'saving likelihood results to {root}likelihood/{fname}')
 np.savetxt(f'{root}likelihood/{fname}',np.vstack([a,l]))
