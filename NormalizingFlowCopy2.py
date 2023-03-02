@@ -158,7 +158,7 @@ class FlowAnalyzer(NormalizingFlow):
         super().__init__(nocuda=nocuda,loadPath=loadPath)
     def precomputeIterations(self,data,niterationSteps):
         self._precomputeIterations(data,niterationSteps)
-    def set_fg(self, fg, sigma, chromatic, galcut, noPCA, subsample, noise_K, noiseSeed, combineSigma):
+    def set_fg(self, fg, sigma, chromatic, galcut, noPCA, subsample, noise_K, noiseSeed, combineSigma, subsampleSigma):
         self.fg=fg
         self.sigma=sigma
         self.chromatic=chromatic
@@ -168,6 +168,7 @@ class FlowAnalyzer(NormalizingFlow):
         self.noise_K=noise_K
         self.noiseSeed=noiseSeed
         self.combineSigma=combineSigma
+        self.subsampleSigma=subsampleSigma
         
         self.noise=self.generate_noise(self.fg,self.noise_K,self.subsample,self.sigma,self.noiseSeed)
         self.fg_noisy=self.fg+self.noise
@@ -203,16 +204,34 @@ class FlowAnalyzer(NormalizingFlow):
             print('done! self.train_data,validate_data and test_data ready')
 
         else:
-            self.data, self.fgmeansdata=self.better_subsample(self.fgsmooth, self.sigma, self.galcut,
-                                                             vector=self.fgsmooth_cut.mean(axis=1))
-            assert self.data.shape[0]>self.data.shape[1]
-            print(f'better subsampling')
-            ndata,nfreq=self.data.shape
-            ntrain=int(0.8*ndata)
-            self.train_data=self.data[:ntrain,:]
-            self.validate_data=self.data[ntrain:,:]
-            print('done! better self.train_data,validate_data and test_data ready')
-
+            if self.combineSigma is None:
+                self.data, self.fgmeansdata=self.better_subsample(self.fgsmooth, self.subsampleSigma, self.galcut,
+                                                                 vector=self.fgsmooth_cut.mean(axis=1))
+                assert self.data.shape[0]>self.data.shape[1]
+                print(f'better subsampling')
+                ndata,nfreq=self.data.shape
+                ntrain=int(0.8*ndata)
+                self.train_data=self.data[:ntrain,:]
+                self.validate_data=self.data[ntrain:,:]
+                print('done! better self.train_data,validate_data and test_data ready')
+            else:
+                print('doing combineSigma...')
+                self.fgsmooth2=self.smooth(self.fg_noisy,self.combineSigma,self.chromatic)
+                self.fgsmooth_combineSigma=np.vstack([self.fgsmooth,self.fgsmooth2])
+                self.fgsmoothcut_combineSigma=self.galaxy_cut(self.fgsmooth_combineSigma,self.galcut)
+                self.data, self.fgmeansdata=self.better_subsample(self.fgsmooth_combineSigma, self.subsampleSigma, self.galcut,
+                                                                 vector=self.fgsmoothcut_combineSigma.mean(axis=1))
+                
+                assert self.data.shape[0]>self.data.shape[1]
+                print(f'better subsampling')
+                ndata,nfreq=self.data.shape
+                ntrain=int(0.8*ndata)
+                self.train_data=self.data[:ntrain,:]
+                self.validate_data=self.data[ntrain:,:]
+                print('done! better self.train_data,validate_data and test_data ready')
+                
+                
+                
     def generate_noise(self,fg,noise_K,subsample,sigma=None,seed=0):
         nfreq,ndata=fg.shape
         np.random.seed(seed)
@@ -279,11 +298,11 @@ class FlowAnalyzer(NormalizingFlow):
         else:
             return out, vector.copy()/rms
 
-    def better_subsample(self, fgsmooth, sigma, galcut, vector=None):
-        print(f'doing smart sampling for sigma={sigma} using nside={self.sigma2nside(sigma)}')
+    def better_subsample(self, fgsmooth, subsampleSigma, galcut, vector=None):
+        print(f'doing smart sampling for sigma={subsampleSigma} using nside={self.sigma2nside(subsampleSigma)}')
 
         #subsample fgsmooth
-        nside=self.sigma2nside(sigma)
+        nside=self.sigma2nside(subsampleSigma)
         ipix=np.arange(hp.nside2npix(nside))
         theta,phi=hp.pix2ang(nside,ipix)
         ipix_128=hp.ang2pix(128,theta,phi)
@@ -294,10 +313,11 @@ class FlowAnalyzer(NormalizingFlow):
         print(fgsmooth.shape)
         fg_subsample=fgsmooth[:,maskpix].copy()
         self.fg_bettersample=fg_subsample.copy()
-
+        print('shape after subsampling:', fg_subsample.shape)
+        
         #galcut and do PCA
         print('doing internal PCA...')
-        fgsmooth_cut=self.galaxy_cut(fgsmooth,galcut) 
+        fgsmooth_cut=self.galaxy_cut(fgsmooth,galcut)
         cov=np.cov(fgsmooth_cut)
         eva,eve=np.linalg.eig(cov)
         s=np.argsort(np.abs(eva))[::-1] 
@@ -335,10 +355,13 @@ class FlowAnalyzer(NormalizingFlow):
             if overwrite: self.t21=combine_t21
             print('combine_t21.shape=',combine_t21.shape, 'fg_smooth_cut_combine.shape=',self.fgsmoothcut_combineSigma.shape)
             print(f'projecting t21 according to noPCA={self.noPCA}')
-            if self.noPCA:
-                _,t21data=self.get_data_noPCA(self.fgsmoothcut_combineSigma, combine_t21)
+            if self.subsample is not None:
+                if self.noPCA:
+                    _,t21data=self.get_data_noPCA(self.fgsmoothcut_combineSigma, combine_t21)
+                else:
+                    _,t21data=self.get_data_PCA(self.fgsmoothcut_combineSigma, combine_t21)
             else:
-                _,t21data=self.get_data_PCA(self.fgsmoothcut_combineSigma, combine_t21)
+                _,t21data=self.better_subsample(self.fgsmooth_combineSigma, self.subsampleSigma, self.galcut, combine_t21)
         else:
             if include_noise: 
                 t21+=self.noise.mean(axis=1)
@@ -351,7 +374,7 @@ class FlowAnalyzer(NormalizingFlow):
                 else:
                     _,t21data=self.get_data_PCA(self.fgsmooth_cut, t21)
             else:
-                _,t21data=self.better_subsample(self.fgsmooth, self.sigma, self.galcut, vector=t21)
+                _,t21data=self.better_subsample(self.fgsmooth, self.subsampleSigma, self.galcut, vector=t21)
         
         if overwrite:
             self.t21data=t21data
