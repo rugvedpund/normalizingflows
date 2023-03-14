@@ -7,7 +7,7 @@ import fitsio
 import lusee
 import matplotlib
 import healpy as hp
-import NormalizingFlowCopy2 as nf
+import NormalizingFlow as nf
 import argparse
 
 parser = argparse.ArgumentParser(description="Normalizing Flow for ULSA maps")
