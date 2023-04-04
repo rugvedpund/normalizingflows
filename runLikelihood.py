@@ -21,6 +21,8 @@ parser.add_argument('--noiseSeed', type=int, default=0, required=False)
 parser.add_argument('--noisyT21', action='store_true')
 parser.add_argument('--DA_factor', type=float, required=True)
 parser.add_argument('--subsampleSigma', type=float, required=True)
+parser.add_argument('--gainFluctuationLevel', type=float, required=False)
+parser.add_argument('--freqFluctuationLevel',type=float, required=False)
 
 args=parser.parse_args()
 
@@ -32,6 +34,7 @@ fg=fitsio.read('/home/rugved/Files/LuSEE/ml/200.fits')
 
 
 fname=f'GIS_ulsa_nside128_sigma{args.sigma}_subsample{args.subsample_factor}_galcut{args.galcut}_noPCA{args.noPCA}_chromaticBeam{args.chromatic}_combineSigma{args.combineSigma}_noise{args.noise}_seed{args.noiseSeed}_subsampleSigma{args.subsampleSigma}'
+if args.gainFluctuationLevel is not None: fname+=f'_gainFluctuation{args.gainFluctuationLevel}'
 if args.append: fname+=args.append
 print(f'now doing {fname}')
 

@@ -29,7 +29,7 @@ class NormalizingFlow:
         self.validate_data=self._toTensor(validate_data)
         if retrain: 
             print('retraining...')
-            del self.model
+            self.model=None
         self.model=GIS.GIS(self.train_data.clone(),self.validate_data.clone(),nocuda=nocuda)
         self.nlayer=len(self.model.layer)
         print('Total number of iterations: ', len(self.model.layer))
@@ -161,7 +161,7 @@ class FlowAnalyzer(NormalizingFlow):
         super().__init__(nocuda=nocuda,loadPath=loadPath)
     def precomputeIterations(self,data,niterationSteps):
         self._precomputeIterations(data,niterationSteps)
-    def set_fg(self, fg, sigma, chromatic, galcut, noPCA, subsample, noise_K, noiseSeed, combineSigma, subsampleSigma, gainFluctuationLevel):
+    def set_fg(self, fg, sigma, chromatic, galcut, noPCA, subsample, noise_K, noiseSeed, combineSigma, subsampleSigma, gainFluctuationLevel,gFdebug):
         self.fg=fg
         self.sigma=sigma
         self.chromatic=chromatic
@@ -173,6 +173,7 @@ class FlowAnalyzer(NormalizingFlow):
         self.combineSigma=combineSigma
         self.subsampleSigma=subsampleSigma
         self.gainFluctuationLevel=gainFluctuationLevel
+        self.gFdebug=gFdebug
         
         self.noise=self.generate_noise(self.fg,self.noise_K,self.subsample,self.sigma,self.noiseSeed)
         self.fg_noisy=self.fg+self.noise
@@ -211,7 +212,8 @@ class FlowAnalyzer(NormalizingFlow):
             if self.combineSigma is None:
                 self.data, self.fgmeansdata=self.better_subsample(self.fgsmooth.copy(), self.subsampleSigma, self.galcut, 
                                                                   vector=self.fgsmooth_cut.mean(axis=1), 
-                                                                  gainFluctuationLevel=self.gainFluctuationLevel)
+                                                                  gainFluctuationLevel=self.gainFluctuationLevel,
+                                                                 gFdebug=self.gFdebug)
                 assert self.data.shape[0]>self.data.shape[1]
                 print(f'better subsampling')
                 ndata,nfreq=self.data.shape
@@ -226,7 +228,8 @@ class FlowAnalyzer(NormalizingFlow):
                 self.fgsmoothcut_combineSigma=self.galaxy_cut(self.fgsmooth_combineSigma.copy(),self.galcut)
                 self.data, self.fgmeansdata=self.better_subsample(self.fgsmooth_combineSigma.copy(), self.subsampleSigma, self.galcut,
                                                                   vector=self.fgsmoothcut_combineSigma.mean(axis=1),
-                                                                  gainFluctuationLevel=self.gainFluctuationLevel)
+                                                                  gainFluctuationLevel=self.gainFluctuationLevel,
+                                                                 gFdebug=self.gFdebug)
                 
                 assert self.data.shape[0]>self.data.shape[1]
                 print(f'better subsampling')
@@ -304,10 +307,10 @@ class FlowAnalyzer(NormalizingFlow):
         else:
             return out, vector.copy()/rms
 
-    def better_subsample(self, fgsmooth, subsampleSigma, galcut, vector=None, gainFluctuationLevel=0.0):
+    def better_subsample(self, fgsmooth, subsampleSigma, galcut, gFdebug, vector=None, gainFluctuationLevel=0.0):
         print(f'doing smart sampling for sigma={subsampleSigma} using nside={self.sigma2nside(subsampleSigma)}')
         
-        fgsmooth_gainF=self.includeGainFluctuations(fgsmooth, gainFluctuationLevel)
+        fgsmooth_gainF=self.includeGainFluctuations(fgsmooth, gainFluctuationLevel,gFdebug)
         #subsample fgsmooth
         nside=self.sigma2nside(subsampleSigma)
         ipix=np.arange(hp.nside2npix(nside))
@@ -342,15 +345,20 @@ class FlowAnalyzer(NormalizingFlow):
         else:
             return out
 
-    def includeGainFluctuations(self, fgsmoothcut, gainFluctuationLevel):
+    def includeGainFluctuations(self, fgsmoothcut, gainFluctuationLevel, gFdebug):
         print(f'including gain fluctuations of level: {gainFluctuationLevel}')
         _,ndata=fgsmoothcut.shape
         freqs=np.arange(1,51)
-        gainF=np.random.normal(0,gainFluctuationLevel if gainFluctuationLevel is not None else 0.0,ndata)
+        self.gainF=np.random.normal(0,gainFluctuationLevel if gainFluctuationLevel is not None else 0.0,ndata)
         template=lusee.mono_sky_models.T_DarkAges_Scaled(freqs,nu_rms=14,nu_min=16.4,A=0.04)
         fgmeans=fgsmoothcut.mean(axis=1)
         #does not work for combineSigma
-        return fgsmoothcut + fgsmoothcut*gainF + np.outer(template,gainF)
+        
+        if gFdebug==1: return fgsmoothcut + fgsmoothcut*self.gainF
+        if gFdebug==2: return fgsmoothcut + np.outer(template,self.gainF)
+        if gFdebug==3: return fgsmoothcut + fgsmoothcut*self.gainF + np.outer(template,self.gainF)
+        
+        raise NotImplementedError
         
     def sigma2nside(self, sigma):
         #done by hand
@@ -391,7 +399,7 @@ class FlowAnalyzer(NormalizingFlow):
                 else:
                     _,t21data=self.get_data_PCA(self.fgsmooth_cut.copy(), t21)
             else:
-                _,t21data=self.better_subsample(self.fgsmooth.copy(), self.subsampleSigma, self.galcut, vector=t21, gainFluctuationLevel=self.gainFluctuationLevel)
+                _,t21data=self.better_subsample(self.fgsmooth.copy(), self.subsampleSigma, self.galcut, vector=t21, gainFluctuationLevel=self.gainFluctuationLevel,gFdebug=self.gFdebug)
         
         if overwrite:
             self.t21data=t21data.copy()
@@ -430,8 +438,9 @@ def get_projected_data(data, vector=None):
     eva,eve=np.real(eva[s]),np.real(eve[:,s])
     proj_data=eve.T@(data-data.mean(axis=1)[:,None]) #subtract mean and project
     rms=np.sqrt(proj_data.var(axis=1))
-    out=(proj_data/rms[:,None]).T #divide by rms
-    out=np.random.permutation(out)
+    # out=(proj_data/rms[:,None]).T #divide by rms
+    # out=np.random.permutation(out)
+    out=(proj_data/rms[:,None])
     if vector is None: 
         return out
     else:

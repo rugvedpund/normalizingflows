@@ -22,6 +22,7 @@ parser.add_argument('--noise', type=float, default=0.0, required=False)
 parser.add_argument('--noiseSeed', type=int, default=0, required=False)
 parser.add_argument('--subsampleSigma', type=float, required=True)
 parser.add_argument('--gainFluctuationLevel', type=float, required=False)
+parser.add_argument('--gFdebug', type=int, required=False)
 args=parser.parse_args()
 
 for arg in vars(args):
@@ -36,7 +37,7 @@ if __name__=='__main__':
     
     #train
     fname=f'/home/rugved/Files/LuSEE/ml/GIS_ulsa_nside128_sigma{args.sigma}_subsample{args.subsample_factor}_galcut{args.galcut}_noPCA{args.noPCA}_chromaticBeam{args.chromatic}_combineSigma{args.combineSigma}_noise{args.noise}_seed{args.noiseSeed}_subsampleSigma{args.subsampleSigma}'
-    if args.gainFluctuationLevel is not None: fname+=f'_gainFluctuation{args.gainFluctuationLevel}'
+    if args.gainFluctuationLevel is not None: fname+=f'_gainFluctuation{args.gainFluctuationLevel}_gFdebug{args.gFdebug}'
     if args.append: fname+=args.append
     print(fname)
     

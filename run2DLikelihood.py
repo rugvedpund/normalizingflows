@@ -53,29 +53,34 @@ freqs=np.arange(1,51)
 t21=lusee.mono_sky_models.T_DarkAges_Scaled(freqs,nu_rms=14,nu_min=16.4,A=0.04)
 flow.set_t21(t21, include_noise=args.noisyT21,overwrite=True)
 
-l2=np.zeros((30,100)) #y~width,numin points, x~amplitude points
+l2=np.zeros((50,100)) #y~width,numin points, x~amplitude points
 a=np.linspace(max(0,args.DA_factor-2.0),args.DA_factor+2.0,num=l2.shape[1])
 width=np.linspace(10.0,20.0,num=l2.shape[0]) #default is 14
 nu_min=np.linspace(10.0,20.0, num=l2.shape[0]) #default is 16.4
-vs=width if args.vs=='Width' else nu_min #plot this "vs" amplitude
+vs=width if args.vs in ['Width','Both'] else nu_min #plot this "vs" amplitude
+
+x=nu_min if args.vs=='Both' else a
 
 if args.freqFluctuationLevel is None: args.freqFluctuationLevel=0.0
 
 for iv,v in enumerate(vs):
     l_temp=np.zeros((l2.shape[1],fgshape))
-    for iaa,aa in enumerate(a):
-        print(f'--------------{(iv*l2.shape[1]+iaa)/(l2.shape[0]*l2.shape[1])*100} % done')
+    for ixx,xx in enumerate(x):
+        print(f'--------------{(iv*l2.shape[1]+ixx)/(l2.shape[0]*l2.shape[1])*100} % done')
         if args.vs=='Width':
             print('plotting amplitude vs width')
-            t21_vs=lusee.mono_sky_models.T_DarkAges_Scaled(freqs,nu_rms=v,nu_min=16.4,A=0.04)
+            t21_vs=xx*lusee.mono_sky_models.T_DarkAges_Scaled(freqs,nu_rms=v,nu_min=16.4,A=0.04)
         elif args.vs=='NuMin':
             print('plotting amplitude vs nu_min')
-            t21_vs=lusee.mono_sky_models.T_DarkAges_Scaled(freqs,nu_rms=14,nu_min=v,A=0.04)
+            t21_vs=xx*lusee.mono_sky_models.T_DarkAges_Scaled(freqs,nu_rms=14,nu_min=v,A=0.04)
+        elif args.vs=='Both':
+            print('plotting width vs nu_min')
+            t21_vs=lusee.mono_sky_models.T_DarkAges_Scaled(freqs,nu_rms=v,nu_min=xx,A=0.04)
         else:
             print('use "Width" or "NuMin"')
         t21_vsdata=flow.set_t21(t21_vs,include_noise=args.noisyT21,overwrite=False)
         print(f'{t21_vsdata.shape=}, {flow.t21data.shape=}, {flow.fgmeansdata.shape=}')
-        l_temp[iaa,:]=flow.fgmeansdata+(args.DA_factor*flow.t21data*(1+args.freqFluctuationLevel*np.cos(6*np.pi/50*freqs)) - aa*t21_vsdata)
+        l_temp[ixx,:]=flow.fgmeansdata+(args.DA_factor*flow.t21data*(1+args.freqFluctuationLevel*np.cos(6*np.pi/50*freqs)) - t21_vsdata)
     l2[iv,:]=flow._likelihood(l_temp).cpu().numpy()
 
 fname+=f'_noisyT21{args.noisyT21}_vs{args.vs}_DAfactor{args.DA_factor}_subsampleSigma{args.subsampleSigma}_freqFluctuationLevel{args.freqFluctuationLevel}'
