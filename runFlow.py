@@ -35,19 +35,16 @@ if __name__=='__main__':
     fg=fitsio.read('/home/rugved/Files/LuSEE/ml/200.fits')
     print(fg.shape)
     
-    #train
+    
     fname=f'/home/rugved/Files/LuSEE/ml/GIS_ulsa_nside128_sigma{args.sigma}_subsample{args.subsample_factor}_galcut{args.galcut}_noPCA{args.noPCA}_chromaticBeam{args.chromatic}_combineSigma{args.combineSigma}_noise{args.noise}_seed{args.noiseSeed}_subsampleSigma{args.subsampleSigma}'
     if args.gainFluctuationLevel is not None: fname+=f'_gainFluctuation{args.gainFluctuationLevel}_gFdebug{args.gFdebug}'
     if args.append: fname+=args.append
-    print(fname)
-    
     flow=nf.FlowAnalyzer(nocuda=False,loadPath=fname)
     flow.set_fg(fg=fg,sigma=args.sigma,chromatic=args.chromatic,galcut=args.galcut,noPCA=args.noPCA,
             subsample=args.subsample_factor,noise_K=args.noise, noiseSeed=args.noiseSeed, 
-            combineSigma=args.combineSigma, subsampleSigma=args.subsampleSigma, gainFluctuationLevel=args.gainFluctuationLevel)
-    
+            combineSigma=args.combineSigma, subsampleSigma=args.subsampleSigma, gainFluctuationLevel=args.gainFluctuationLevel, gFdebug=args.gFdebug)
     flow.train(flow.train_data, flow.validate_data, nocuda=False, savePath=fname,retrain=True)
-        
+
     time_end=time.time()-time_start
     print('Time taken to complete:', time_end//60,'mins')
 

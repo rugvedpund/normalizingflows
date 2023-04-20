@@ -155,6 +155,55 @@ class NormalizingFlow:
     def _likelihood(self,data):
         data=self._toTensor(data)
         return self.model.evaluate_density(data)
+
+# class Map:
+#     def __init__(self,fg,sigma,chromatic,subsampleSigma,noise_K,noiseSeed,galcut,gainFlevel,gainFdebug,combineSigmaList):
+#         self.fg=fg.copy()
+#         self.sigma=sigma
+#         self.chromatic=chromatic
+#         self.subsampleSigma=subsampleSigma
+#         self.noise_K=noise_K
+#         self.noiseSeed=noiseSeed
+#         np.random.seed(noiseSeed)
+#         self.galcut=galcut
+#         self.gainFlevel=gainFlevel
+#         self.gainFdebug=gainFdebug
+#         self.combineSigmaList=combineSigmaList
+        
+#     def _generate_noise(self):
+#         """
+#         generates gaussian noise map with per pixel noise ~noise_K*sqrt(npix)
+#         this looks ahead to subsampling later, which will subsample the map down to npix
+#         """
+#         nfreq,ndata=self.fg.shape
+#         np.random.seed(self.noiseSeed)
+#         nside=self.sigma2nside(self.sigma)
+#         npix=hp.nside2npix(nside)
+#         noise_sigma=self.noise_K*np.sqrt(npix)
+#         noise=np.random.normal(0,noise_sigma,(nfreq,ndata))
+#         return noise
+    
+#     def _smooth(self):
+#         print(f'smoothing with {self.sigma} deg, and chromatic {self.chromatic}')
+#         fgsmooth=np.zeros_like(self.fg)
+#         nfreq,ndata=self.fg.shape
+#         for f in range(nfreq):
+#             sigma_f=self.sigma*(10.0/(f+1)) if self.chromatic else self.sigma
+#             fgsmooth[f,:]=hp.sphtfunc.smoothing(self.fg[f,:],sigma=np.deg2rad(sigma_f))
+#         return fgsmooth
+    
+#     def _sigma2nside(self, sigma):
+#         sigma2nside_map={0.5:64, 1.0:32, 2.0:16, 4.0:8, 8.0:4}
+#         return sigma2nside_map[sigma]
+        
+#     def _subsample():
+        
+#     def process_maps(self):
+#         self.noise=self._generate_noise()
+#         self.fgnoisy=self.fg+self.noise
+#         self.fgsmooth=self._smooth()
+
+        
         
 class FlowAnalyzer(NormalizingFlow):
     def __init__(self, nocuda, loadPath):
@@ -215,7 +264,7 @@ class FlowAnalyzer(NormalizingFlow):
                                                                   gainFluctuationLevel=self.gainFluctuationLevel,
                                                                  gFdebug=self.gFdebug)
                 assert self.data.shape[0]>self.data.shape[1]
-                print(f'better subsampling')
+                print(f'done with smart subsampling')
                 ndata,nfreq=self.data.shape
                 ntrain=int(0.8*ndata)
                 self.train_data=self.data[:ntrain,:].copy()
@@ -310,7 +359,8 @@ class FlowAnalyzer(NormalizingFlow):
     def better_subsample(self, fgsmooth, subsampleSigma, galcut, gFdebug, vector=None, gainFluctuationLevel=0.0):
         print(f'doing smart sampling for sigma={subsampleSigma} using nside={self.sigma2nside(subsampleSigma)}')
         
-        fgsmooth_gainF=self.includeGainFluctuations(fgsmooth, gainFluctuationLevel,gFdebug)
+        fgsmooth_gainF=self.includeGainFluctuations(fgsmooth.copy(), gainFluctuationLevel,gFdebug)
+        if gFdebug==0: assert np.allclose(fgsmooth_gainF,fgsmooth)
         #subsample fgsmooth
         nside=self.sigma2nside(subsampleSigma)
         ipix=np.arange(hp.nside2npix(nside))
@@ -326,17 +376,19 @@ class FlowAnalyzer(NormalizingFlow):
         print('shape after subsampling:', fg_subsample.shape)
         
         #galcut and do PCA
-        print('doing internal PCA...')
         fgsmooth_cut=self.galaxy_cut(fgsmooth_gainF,galcut)
         cov=np.cov(fgsmooth_cut)
         eva,eve=np.linalg.eig(cov)
         s=np.argsort(np.abs(eva))[::-1] 
         eva,eve=np.real(eva[s]),np.real(eve[:,s])
-        self.eva=eva.copy()
-        self.eve=eve.copy()
+        
         #project subsampled fg
         proj_fg=eve.T@(fg_subsample-fg_subsample.mean(axis=1)[:,None])
         rms=np.sqrt(proj_fg.var(axis=1))
+        print('calculated eva, eve, rms')
+        self.eva=eva.copy()
+        self.eve=eve.copy()
+        self.rms=rms.copy()
         out=(proj_fg/rms[:,None]).T #divide by rms, transpose for pytorch
         out=np.random.permutation(out) #shuffles only along first index
         # print(f'{fgsmooth.shape=}, {fg_subsample.shape=}, {proj_fg.shape=}, {out.shape=}')
@@ -353,7 +405,8 @@ class FlowAnalyzer(NormalizingFlow):
         template=lusee.mono_sky_models.T_DarkAges_Scaled(freqs,nu_rms=14,nu_min=16.4,A=0.04)
         fgmeans=fgsmoothcut.mean(axis=1)
         #does not work for combineSigma
-        
+        print('try fix with .copy()')
+        if gFdebug==0: return fgsmoothcut
         if gFdebug==1: return fgsmoothcut + fgsmoothcut*self.gainF
         if gFdebug==2: return fgsmoothcut + np.outer(template,self.gainF)
         if gFdebug==3: return fgsmoothcut + fgsmoothcut*self.gainF + np.outer(template,self.gainF)
@@ -369,17 +422,22 @@ class FlowAnalyzer(NormalizingFlow):
             print('sigmas must be either 0.5, 1.0, 2.0, 4.0, or 8.0')
             raise NotImplementedError
         return sigma2nside_map[sigma]
-
+    
+    def proj_t21(self,t21_vs,include_noise):
+        if include_noise: t21_vs+=self.noise.mean(axis=1)[:,None]
+        proj_t21=(self.eve.T@t21_vs)/self.rms[:,None]
+        return proj_t21
+    
     def set_t21(self, t21, include_noise, overwrite):
+        if include_noise: 
+                t21+=self.noise.mean(axis=1)
+                print(f'including noise {self.noise_K} in t21')
+        
         if self.combineSigma is not None:
             print(f'combining sigma {self.sigma} with combineSigma {self.combineSigma}')
-            if include_noise: 
-                t21+=self.noise.mean(axis=1)
-                print('including noise in t21')
             combine_t21=np.hstack([t21,t21])
             if overwrite: self.t21=combine_t21.copy()
             print('combine_t21.shape=',combine_t21.shape, 'fg_smooth_cut_combine.shape=',self.fgsmoothcut_combineSigma.shape)
-            print(f'projecting t21 according to noPCA={self.noPCA}')
             if self.subsample is not None:
                 if self.noPCA:
                     _,t21data=self.get_data_noPCA(self.fgsmoothcut_combineSigma.copy(), combine_t21)
@@ -388,11 +446,7 @@ class FlowAnalyzer(NormalizingFlow):
             else:
                 _,t21data=self.better_subsample(self.fgsmooth_combineSigma.copy(), self.subsampleSigma, self.galcut, combine_t21)
         else:
-            if include_noise: 
-                t21+=self.noise.mean(axis=1)
-                print('including noise in t21')
             if overwrite: self.t21=t21.copy()
-            print(f'projecting t21 according to noPCA={self.noPCA}')
             if self.subsample is not None:
                 if self.noPCA:
                     _,t21data=self.get_data_noPCA(self.fgsmooth_cut.copy(), t21)
@@ -446,3 +500,12 @@ def get_projected_data(data, vector=None):
     else:
         return out, (eve.T@vector)/rms
 
+def exp(l):
+    return [np.exp((ll-max(l))/2) for ll in l]
+def exp2d(a):
+    return np.exp(a-a.max())
+def lin2d(a):
+    return a-a.max()
+def normexp(a):
+    b=exp2d(a)
+    return b/b.sum()
