@@ -15,7 +15,7 @@ parser.add_argument('--chromatic', action='store_true')
 parser.add_argument('--galcut', type=float, required=False)
 parser.add_argument('--noPCA', action='store_true')
 parser.add_argument('--append')
-parser.add_argument('--combineSigma', type=float, required=False)
+parser.add_argument('--combineSigma', type=str, required=False)
 parser.add_argument('--noise', type=float, default=0.0, required=False)
 parser.add_argument('--noiseSeed', type=int, default=0, required=False)
 parser.add_argument('--noisyT21', action='store_true')
@@ -25,7 +25,7 @@ parser.add_argument('--subsampleSigma', type=float, required=True)
 parser.add_argument('--gainFluctuationLevel', type=float, required=False)
 parser.add_argument('--gFdebug', type=int, required=False)
 parser.add_argument('--retrain', action='store_true')
-parser.add_argument('--freqFluctuationLevel',type=float, required=False)
+parser.add_argument('--freqFluctuationLevel',type=float, required=False, default=0.0)
 args=parser.parse_args()
 
 for arg in vars(args):
@@ -35,18 +35,20 @@ root='/home/rugved/Files/LuSEE/ml/'
 fg=fitsio.read('/home/rugved/Files/LuSEE/ml/200.fits')
 
 #try loading
-fname=f'/home/rugved/Files/LuSEE/ml/GIS_ulsa_nside128_sigma{args.sigma}_subsample{args.subsample_factor}_galcut{args.galcut}_noPCA{args.noPCA}_chromaticBeam{args.chromatic}_combineSigma{args.combineSigma}_noise{args.noise}_seed{args.noiseSeed}_subsampleSigma{args.subsampleSigma}'
+cS=','.join(args.combineSigma.split())
+fname=f'/home/rugved/Files/LuSEE/ml/GIS_ulsa_nside128_sigma{args.sigma}_subsample{args.subsample_factor}_galcut{args.galcut}_noPCA{args.noPCA}_chromaticBeam{args.chromatic}_combineSigma{cS}_noise{args.noise}_seed{args.noiseSeed}_subsampleSigma{args.subsampleSigma}'
 if args.gainFluctuationLevel is not None: fname+=f'_gainFluctuation{args.gainFluctuationLevel}_gFdebug{args.gFdebug}'
 if args.append: fname+=args.append
-flow=nf.FlowAnalyzer(nocuda=False,loadPath=fname)
-flow.set_fg(fg=fg,sigma=args.sigma,chromatic=args.chromatic,galcut=args.galcut,noPCA=args.noPCA,
-        subsample=args.subsample_factor,noise_K=args.noise, noiseSeed=args.noiseSeed, 
-        combineSigma=args.combineSigma, subsampleSigma=args.subsampleSigma, gainFluctuationLevel=args.gainFluctuationLevel, gFdebug=args.gFdebug)
+flow=nf.FlowAnalyzerV2(nocuda=False,loadPath=fname)
+flow.set_fg(fg=fg,sigma=args.sigma,chromatic=args.chromatic,galcut=args.galcut,noise_K=args.noise,
+            noiseSeed=args.noiseSeed,combineSigma=args.combineSigma,subsampleSigma=args.subsampleSigma,
+            gFLevel=args.gainFluctuationLevel,gFdebug=args.gFdebug)
 print('setting t21...')
 freqs=np.arange(1,51)
 t21=lusee.mono_sky_models.T_DarkAges_Scaled(freqs,nu_rms=14,nu_min=16.4,A=0.04)
-flow.set_t21(t21, include_noise=args.noisyT21,overwrite=True)
-flowt21data_fF=(1+args.freqFluctuationLevel*np.cos(6*np.pi/50*freqs))*flow.t21data
+flow.set_t21(t21, include_noise=args.noisyT21)
+# flowt21data_fF=(1+args.freqFluctuationLevel*np.cos(6*np.pi/50*freqs))*flow.t21data
+flowt21data_fF=flow.t21data
 
 if args.retrain: flow.train(flow.train_data, flow.validate_data, nocuda=False, savePath=fname,retrain=True)
 
