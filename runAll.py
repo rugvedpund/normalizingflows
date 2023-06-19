@@ -10,24 +10,27 @@ parser = argparse.ArgumentParser(description="Normalizing Flow for ULSA maps")
 parser.add_argument('sigma', type=float)
 parser.add_argument('--subsample_factor', type=int, default=None, required=False)
 parser.add_argument('--chromatic', action='store_true')
-parser.add_argument('--galcut', type=float, required=False)
+parser.add_argument('--galcut', type=float, default=20.0, required=False)
 parser.add_argument('--noPCA', action='store_true')
 
 parser.add_argument('--combineSigma', type=str, required=False, default='') #e.g. '4 6' separated by space
 
 parser.add_argument('--noise', type=float, default=0.0, required=False)
 parser.add_argument('--noiseSeed', type=int, default=0, required=False)
-parser.add_argument('--subsampleSigma', type=float, required=True)
+parser.add_argument('--subsampleSigma', type=float, default=2.0, required=False)
 
-parser.add_argument('--noisyT21', action='store_true')
-parser.add_argument('--gainFluctuationLevel', type=float, required=False)
-parser.add_argument('--gFdebug', type=int, required=False)
+parser.add_argument('--cleanT21', action='store_true')
+parser.add_argument('--gainFluctuationLevel', type=float, default=0.0, required=False)
+parser.add_argument('--gFdebug', type=int, default=0, required=False)
 parser.add_argument('--append')
 
-parser.add_argument('--DA_factor', type=float, required=True)
+parser.add_argument('--DA_factor', type=float, required=False, default=1.0)
 parser.add_argument('--plot', type=str, default='Width', required=True) # 1dAmplitude 1dWidth 1dNuMin WvA NvA WvN
 parser.add_argument('--freqFluctuationLevel',type=float, required=False, default=0.0)
 parser.add_argument('--nPCA', type=str, default='') #e.g 'nmin nmax' separated by space
+
+parser.add_argument('--diffCombineSigma',action='store_true') #bool, whether to do fg_cS[sigma]-fg_cS[sigma-1]
+parser.add_argument('--avgAdjacentFreqBins',action='store_true') #bool, whether to average adjacent freq bins
 
 parser.add_argument('--retrain', action='store_true')
 args=parser.parse_args()
@@ -50,19 +53,21 @@ flow.set_fg(fg=fg,sigma=args.sigma,chromatic=args.chromatic,
             galcut=args.galcut,noise_K=args.noise, noiseSeed=args.noiseSeed,
             combineSigma=args.combineSigma, subsampleSigma=args.subsampleSigma,
             gFLevel=args.gainFluctuationLevel, gFdebug=args.gFdebug,
-           nPCA=args.nPCA)
+           nPCA=args.nPCA,diffCombineSigma=args.diffCombineSigma,
+           avgAdjacentFreqBins=args.avgAdjacentFreqBins)
 
 print('setting t21...')
 freqs=np.arange(1,51)
 t21=lusee.mono_sky_models.T_DarkAges_Scaled(freqs,nu_rms=14,nu_min=16.4,A=0.04)
-flow.set_t21(t21, include_noise=args.noisyT21)
-if args.retrain: flow.train(flow.train_data, flow.validate_data, nocuda=False, savePath=fname,retrain=True,
-                            alpha=(0.999,0.999),delta_logp=10)
+flow.set_t21(t21, include_noise=not args.cleanT21)
+if args.retrain: flow.train(flow.train_data, flow.validate_data, nocuda=False, savePath=fname,retrain=True)
 
-npoints=50
+npoints=100
 # kwargs={'amin':0.0,'amax':150.0,'wmin':1.0,'wmax':40.0,'nmin':1.0,'nmax':40.0}
 # kwargs={'amin':0.0,'amax':3.0,'wmin':10.0,'wmax':20.0,'nmin':10.0,'nmax':20.0}
-kwargs={'amin':0.5,'amax':1.5,'wmin':11.0,'wmax':17.0,'nmin':15.0,'nmax':18.0}
+# kwargs={'amin':0.5,'amax':1.5,'wmin':11.0,'wmax':17.0,'nmin':15.0,'nmax':18.0}
+kwargs={'amin':0.01,'amax':100.0,'wmin':11.0,'wmax':17.0,'nmin':15.0,'nmax':18.0,
+         'logspace':True}
 
 #3D corner
 samples,t21_vs=nf.get_t21vs(npoints,**kwargs)
