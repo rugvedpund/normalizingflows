@@ -41,9 +41,10 @@ for arg in vars(args):
     
 ###-------------------------------------------------------------------------------------------------###
 
+root=os.environ['LUSEE_ML']
 
 #load ulsa map
-fg=fitsio.read('/home/rugved/Files/LuSEE/ml/200.fits')
+fg=fitsio.read(f'{root}200.fits')
 
 #try loading
 fname=nf.get_fname(args)

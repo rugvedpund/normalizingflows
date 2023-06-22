@@ -8,6 +8,9 @@ import lusee
 import matplotlib
 import healpy as hp
 import fitsio
+import os
+
+root=os.environ['LUSEE_ML'] #specify path to save/load models and likelihood results
 
 def exp(l,numpy=True):
     if numpy: 
@@ -73,7 +76,6 @@ def get_t21vs1d(npoints,vs,**kwargs):
 
 def get_fname(args):
     """for saving model after training"""
-    root='/home/rugved/Files/LuSEE/ml/'
     cS=','.join(args.combineSigma.split())
 
     fname=f'{root}GIS_ulsa_nside128_sigma{args.sigma}_subsample{args.subsample_factor}_galcut{args.galcut}_noPCA{args.noPCA}_chromaticBeam{args.chromatic}_combineSigma{cS}_noise{args.noise}_seed{args.noiseSeed}_subsampleSigma{args.subsampleSigma}'
@@ -84,7 +86,6 @@ def get_fname(args):
 
 def get_lname(args,plot):
     """for saving likelihood results"""
-    root='/home/rugved/Files/LuSEE/ml/'
     cS=','.join(args.combineSigma.split())
     pca=','.join(args.nPCA.split())
     lname=f'{root}corner/GIS_ulsa_nside128_sigma{args.sigma}_subsample{args.subsample_factor}_galcut{args.galcut}_noPCA{args.noPCA}_chromaticBeam{args.chromatic}_combineSigma{cS}_noise{args.noise}_seed{args.noiseSeed}_subsampleSigma{args.subsampleSigma}'
