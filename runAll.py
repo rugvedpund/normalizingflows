@@ -43,7 +43,7 @@ for arg in vars(args):
 
 
 #load ulsa map
-fg=fitsio.read('/home/rugved/Files/LuSEE/ml/200.fits')
+fg=fitsio.read('~/LuSEE/ml/200.fits')
 
 #try loading
 fname=nf.get_fname(args)
@@ -60,7 +60,12 @@ print('setting t21...')
 freqs=np.arange(1,51)
 t21=lusee.mono_sky_models.T_DarkAges_Scaled(freqs,nu_rms=14,nu_min=16.4,A=0.04)
 flow.set_t21(t21, include_noise=args.noisyT21)
+<<<<<<< Updated upstream
 if args.retrain: flow.train(flow.train_data, flow.validate_data, nocuda=False, savePath=fname,retrain=True)
+=======
+if args.retrain: flow.train(flow.train_data, flow.validate_data, nocuda=False, savePath=fname,retrain=True,
+                            alpha=(0.9999,0.9999),delta_logp=10)
+>>>>>>> Stashed changes
 
 npoints=50
 # kwargs={'amin':0.0,'amax':150.0,'wmin':1.0,'wmax':40.0,'nmin':1.0,'nmax':40.0}
