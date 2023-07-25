@@ -158,8 +158,7 @@ class NormalizingFlow:
 class FlowAnalyzerV2(NormalizingFlow):
     def __init__(self,loadPath,nocuda=False):
         super().__init__(loadPath=loadPath,nocuda=nocuda)
-    def set_fg(self,fg,sigma,chromatic,galcut,subsampleSigma,noise_K,noiseSeed,combineSigma,gFLevel,gFdebug,nPCA,
-               diffCombineSigma,avgAdjacentFreqBins):
+    def set_fg(self,args):
         """
         fg: foreground map of shape (nfreq,npix)
         sigma: smoothing scale in deg
@@ -176,19 +175,18 @@ class FlowAnalyzerV2(NormalizingFlow):
         avgAdjacentFreqBins: bool, whether to combine adjacent freq bins
         """
 
-
-        self.fg=fg
-        self.sigma=sigma
-        self.chromatic=chromatic
-        self.galcut=galcut
-        self.noise_K=noise_K
-        self.noiseSeed=noiseSeed
-        self.subsampleSigma=subsampleSigma
-        self.combineSigma=[float(c) for c in combineSigma.split()]
-        self.gainFluctuationLevel=gFLevel
-        self.gFdebug=gFdebug
-        self.diffCombineSigma=diffCombineSigma
-        self.avgAdjacentFreqBins=avgAdjacentFreqBins
+        self.fg=fitsio.read(f'{root}200.fits')
+        self.sigma=args.sigma
+        self.chromatic=args.chromatic
+        self.galcut=args.galcut
+        self.noise_K=args.noise
+        self.noiseSeed=args.noiseSeed
+        self.subsampleSigma=args.subsampleSigma
+        self.combineSigma=[float(c) for c in args.combineSigma.split()]
+        self.gainFluctuationLevel=args.gainFluctuationLevel
+        self.gFdebug=args.gFdebug
+        self.diffCombineSigma=args.diffCombineSigma
+        self.avgAdjacentFreqBins=args.avgAdjacentFreqBins
 
         #fg 
         self.nfreq,self.npix=self.fg.shape
@@ -230,17 +228,22 @@ class FlowAnalyzerV2(NormalizingFlow):
             self.fgsmooth=self.fgsmooth_cAFB.reshape(self.nsigmas*self.nfreq,-1)
             print(f'{self.fgsmooth.shape=}')
 
-        #do PCA with full map with galcut (no subsampling)
+        # #do PCA with full map with galcut (no subsampling)
         self.fgcut=self.galaxy_cut(self.fgsmooth.copy(),self.galcut)
-        self.cov=np.cov(self.fgcut)
-        eva,eve=np.linalg.eig(self.cov)
-        s=np.argsort(np.abs(eva))[::-1]
-        self.eva,self.eve=np.abs(eva[s]),eve[:,s]
+        # self.cov=np.cov(self.fgcut)
+        # eva,eve=np.linalg.eig(self.cov)
+        # s=np.argsort(np.abs(eva))[::-1]
+        # self.eva,self.eve=np.abs(eva[s]),eve[:,s]
         
         #subsample and project
         self.fgss=self.subsample(self.fgsmooth.copy(),self.subsampleSigma,self.galcut)
+
+        #do SVD
+        self.eve,self.eva,self.vt=np.linalg.svd(self.fgss)
+
         print(f'{self.fgss.shape=}')
         proj_fg=self.eve.T@(self.fgss - self.fgss.mean(axis=1)[:,None])
+        self.pfg=proj_fg.copy()
         self.rms=np.sqrt(proj_fg.var(axis=1))
         out=proj_fg/self.rms[:,None]
         self.data=np.random.permutation(out.T) #transpose and permute for torch
@@ -248,8 +251,8 @@ class FlowAnalyzerV2(NormalizingFlow):
         print(f'{self.data.shape=} {self.fgmeansdata.shape=} {self.eve.shape=}')
         
         #remove nPCA modes
-        self.nPCA=[0,self.nfreq*self.nsigmas] if len(nPCA)==0 else [int(p) for p in nPCA.split()]
-        print(f'using modes between {nPCA}')
+        self.nPCA=[0,self.nfreq*self.nsigmas] if len(args.nPCA)==0 else [int(p) for p in args.nPCA.split()]
+        print(f'using modes between {args.nPCA}')
         self.nPCAarr=np.hstack([np.arange(self.nPCA[0]),np.arange(self.nPCA[1],self.nfreq*self.nsigmas)])
         print(self.nPCAarr)
         self.data = np.delete(self.data,self.nPCAarr,axis=1) #delete last nPCA columns
@@ -268,12 +271,13 @@ class FlowAnalyzerV2(NormalizingFlow):
             print('combining adjacent freq bins for t21')
             t21=(t21[::2]+t21[1::2])/2
         self.t21=np.tile(t21,self.nsigmas)
+        self.pt21=self.eve.T@self.t21
         self.t21data=self.eve.T@self.t21/self.rms
         self.t21data=np.delete(self.t21data,self.nPCAarr)
         print(f'{self.t21data.shape=} ready')
     
     def proj_t21(self,t21_vs,include_noise):
-        if include_noise: t21_noisy=t21_vs+self.noise.mean(axis=1)[:,None]
+        t21_noisy=t21_vs+self.noise.mean(axis=1)[:,None] if include_noise else np.zeros_like(t21_vs)
         if self.avgAdjacentFreqBins:
             t21_noisy=(t21_noisy[::2,:]+t21_noisy[1::2,:])/2
         t21cS=np.tile(t21_noisy,(self.nsigmas,1))
@@ -350,3 +354,49 @@ class FlowAnalyzerV2(NormalizingFlow):
         flowt21data_fF=self.t21data if debugfF else (1+freqFluctuationLevel*np.cos(6*np.pi/50*freqs))*self.t21data
         l=(self.fgmeansdata[:,None]+DA_factor*flowt21data_fF[:,None]-t21_vsdata).T
         return self._likelihood(l,end).cpu().numpy()
+
+class Args:
+    def __init__(self,sigma=2.0,
+        subsample_factor=None,
+        galcut=20.0,
+        noPCA=False,
+        chromatic=False,
+        combineSigma='',
+        noise=0.0,
+        noiseSeed=0,
+        subsampleSigma=2.0,
+        noisyT21=True,
+        gainFluctuationLevel=0.0,
+        gFdebug=0,
+        append='',
+        DA_factor=1.0,
+        plot='all', # 1dAmplitude 1dWidth 1dNuMin WvA NvA WvN
+        freqFluctuationLevel=0.0,
+        nPCA='',
+        diffCombineSigma=True,
+        avgAdjacentFreqBins=False
+        ):
+
+        self.sigma=sigma
+        self.subsample_factor=subsample_factor
+        self.galcut=galcut
+        self.noPCA=noPCA
+        self.chromatic=chromatic
+        self.combineSigma=combineSigma
+        self.noise=noise
+        self.noiseSeed=noiseSeed
+        self.subsampleSigma=subsampleSigma
+        self.noisyT21=noisyT21
+        self.gainFluctuationLevel=gainFluctuationLevel
+        self.gFdebug=gFdebug
+        self.append=append
+        self.DA_factor=DA_factor
+        self.plot=plot
+        self.freqFluctuationLevel=freqFluctuationLevel
+        self.nPCA=nPCA
+        self.diffCombineSigma=diffCombineSigma
+        self.avgAdjacentFreqBins=avgAdjacentFreqBins
+    
+    def print(self):
+        for arg in vars(self):
+            print(arg, getattr(self, arg))
