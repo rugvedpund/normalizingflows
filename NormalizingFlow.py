@@ -77,6 +77,7 @@ def get_t21vs1d(npoints,vs,**kwargs):
 def get_fname(args):
     """for saving model after training"""
     cS=','.join(args.combineSigma.split())
+    pca=','.join(args.nPCA.split())
 
     fname=f'{root}GIS_ulsa_nside128_sigma{args.sigma}_subsample{args.subsample_factor}_galcut{args.galcut}_noPCA{args.noPCA}_chromaticBeam{args.chromatic}_combineSigma{cS}_noise{args.noise}_seed{args.noiseSeed}_subsampleSigma{args.subsampleSigma}'
     if args.gainFluctuationLevel is not None: fname+=f'_gainFluctuation{args.gainFluctuationLevel}_gFdebug{args.gFdebug}'
@@ -96,13 +97,32 @@ def get_lname(args,plot):
     lname+=f'_noisyT21{args.noisyT21}_vs{plot}_DAfactor{args.DA_factor}_freqFluctuationLevel{args.freqFluctuationLevel}'
     return lname
 
-def get_samplesAndLikelihood(args,plot):
+def get_samplesAndLikelihood(args,plot,verbose=False):
     lname=get_lname(args,plot)
-    print(f'loading corner likelihood results from {lname}')
+    if verbose: print(f'loading corner likelihood results from {lname}')
     f=np.loadtxt(lname,unpack=True)
     likelihood=f[-1]
     samples=f[:-1].T
     return samples,likelihood
+
+def get_constraints(s,ll):
+    import corner
+    #assume amp,width,numin
+    params=['amp','width','numin']
+    out={'amp':0.0,'amp+':0.0,'amp-':0.0,
+         'width':0.0,'width+':0.0,'width-':0.0,
+         'numin':0.0,'numin+':0.0,'numin-':0.0}
+    for i in range(3):
+        l2,l,m,h,h2=corner.core.quantile(s[:,i].copy(),[0.05,0.16,0.5,0.84,0.95],
+                                   weights=exp(ll.copy()))
+        out[params[i]]=m
+        out[params[i]+'+']=h-m
+        out[params[i]+'-']=m-l
+        out[params[i]+'+-']=h2-l2
+    # out['amp']*=40.0
+    # out['amp+']*=40.0
+    # out['amp-']*=40.0
+    return out
 
 def get_log(fname):
     with open(fname) as f:
@@ -132,7 +152,8 @@ class NormalizingFlow:
         except FileNotFoundError:
             print('no file found, need to train')
         self.precompute_data_after=dict()
-    def train(self,train_data,validate_data,nocuda,savePath,retrain,alpha=None,delta_logp=np.inf):
+    def train(self,train_data,validate_data,nocuda,savePath,retrain,alpha=None,delta_logp=np.inf,
+              verbose=False):
         """
         data must be of shape (nsamples, ndim)
         """
@@ -144,7 +165,7 @@ class NormalizingFlow:
             print('retraining...')
             self.model=None
         self.model=GIS.GIS(self.train_data.clone(),self.validate_data.clone(),nocuda=nocuda,
-                           alpha=alpha,delta_logp=delta_logp)
+                           alpha=alpha,delta_logp=delta_logp,verbose=verbose)
         self.nlayer=len(self.model.layer)
         print('Total number of iterations: ', len(self.model.layer))
         torch.save(self.model,savePath)
@@ -324,7 +345,7 @@ class FlowAnalyzerV2(NormalizingFlow):
         if gFdebug==1: return fgsmooth + fgsmooth*self.gainF
         if gFdebug==2: return fgsmooth + np.outer(template,self.gainF)
         if gFdebug==3: return fgsmooth + fgsmooth*self.gainF + np.outer(template,self.gainF)
-        
+        # if anything else
         raise NotImplementedError
     
     def galaxy_cut(self,fg,b_min):
@@ -368,13 +389,14 @@ class Args:
         noisyT21=True,
         gainFluctuationLevel=0.0,
         gFdebug=0,
-        append='',
+        append='_SVD',
         DA_factor=1.0,
         plot='all', # 1dAmplitude 1dWidth 1dNuMin WvA NvA WvN
         freqFluctuationLevel=0.0,
         nPCA='',
         diffCombineSigma=True,
-        avgAdjacentFreqBins=False
+        avgAdjacentFreqBins=False,
+        retrain=False
         ):
 
         self.sigma=sigma
@@ -396,6 +418,7 @@ class Args:
         self.nPCA=nPCA
         self.diffCombineSigma=diffCombineSigma
         self.avgAdjacentFreqBins=avgAdjacentFreqBins
+        self.retrain=retrain
     
     def print(self):
         for arg in vars(self):
