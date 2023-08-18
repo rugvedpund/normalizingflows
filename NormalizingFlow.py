@@ -20,7 +20,7 @@ def exp(l,numpy=True):
 
 def T_DA(amp,width,nu_min):
     freqs=np.arange(1,51)
-    return amp*lusee.mono_sky_models.T_DarkAges_Scaled(freqs,nu_rms=width,nu_min=nu_min)
+    return amp*lusee.MonoSkyModels.T_DarkAges_Scaled(freqs,nu_rms=width,nu_min=nu_min)
 
 def get_amp_width_numin(npoints,amin=0,amax=3.0,wmin=10.0,wmax=20.0,nmin=10.0,nmax=20.0,logspace=False):
     amp=np.logspace(np.log10(amin),np.log10(amax),num=npoints) if logspace else np.linspace(amin,amax,num=npoints) #default is 1.0
@@ -338,7 +338,7 @@ class FlowAnalyzerV2(NormalizingFlow):
         _,ndata=fgsmooth.shape
         freqs=np.arange(1,51)
         self.gainF=np.random.normal(0,gainFluctuationLevel if gainFluctuationLevel is not None else 0.0,ndata)
-        template=lusee.mono_sky_models.T_DarkAges_Scaled(freqs,nu_rms=14,nu_min=16.4,A=0.04)
+        template=lusee.MonoSkyModels.T_DarkAges_Scaled(freqs,nu_rms=14,nu_min=16.4,A=0.04)
         fgmeans=fgsmooth.mean(axis=1)
         #does not work for combineSigma
         if gFdebug==0: return fgsmooth

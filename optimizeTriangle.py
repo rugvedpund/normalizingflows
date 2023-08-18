@@ -62,7 +62,7 @@ flow.set_fg(args)
 
 print('setting t21...')
 freqs=np.arange(1,51)
-t21=lusee.mono_sky_models.T_DarkAges_Scaled(freqs,nu_rms=14,nu_min=16.4,A=0.04)
+t21=lusee.MonoSkyModels.T_DarkAges_Scaled(freqs,nu_rms=14,nu_min=16.4,A=0.04)
 flow.set_t21(t21, include_noise=args.noisyT21)
 if args.retrain: flow.train(flow.train_data, flow.validate_data, nocuda=False, savePath=fname,retrain=True)
 
@@ -75,7 +75,8 @@ if args.retrain: flow.train(flow.train_data, flow.validate_data, nocuda=False, s
 
 #3D corner
 npoints=50
-kwargs={'amin':0.9,'amax':1.1,'wmin':13.75,'wmax':14.25,'nmin':15.9,'nmax':16.9}
+kwargs={'amin':0.975,'amax':1.025,'wmin':13.99,'wmax':14.01,'nmin':16.35,'nmax':16.45}
+# kwargs={'amin':0.0,'amax':50.0,'wmin':10.0,'wmax':18.0,'nmin':12.4,'nmax':20.4}
 attempt=0
 done=False
 while done==False:
@@ -97,7 +98,9 @@ while done==False:
             kwargs[p[0]+'min']-=2*constraints[p+'-']
             kwargs[p[0]+'max']+=2*constraints[p+'+']
             #keep min >=0.0
-            if kwargs[p[0]+'min']<0.0: kwargs[p[0]+'min']=0.0
+            if kwargs[p[0]+'min']<0.0: 
+                done=True
+                print('min<0.0, breaking')
         
         if constraints[p+'+-']<0.2*(kwargs[p[0]+'max']-kwargs[p[0]+'min']):
             print(f"min/max too big, updating {p}...")
@@ -129,12 +132,12 @@ for arg in vars(args):
     if getattr(refargs,arg)!=getattr(args,arg): print("==>",BOLD,RED,arg,getattr(args,arg),END)
     else: print(arg, getattr(args, arg))
     
-corner.corner(samples,weights=nf.exp(likelihood),bins=50,
-            labels=['Amplitude','Width',r'$\nu_{min}$'], truths=[1.0,14.0,16.4],
-            verbose=True, plot_datapoints=False, show_titles=True,
-            levels=[1-np.exp(-0.5),1-np.exp(-2)])
-# plt.suptitle(f'{lname.split("/")[-1]}')
-plt.show()
+# corner.corner(samples,weights=nf.exp(likelihood),bins=50,
+#             labels=['Amplitude','Width',r'$\nu_{min}$'], truths=[1.0,14.0,16.4],
+#             verbose=True, plot_datapoints=False, show_titles=True,
+#             levels=[1-np.exp(-0.5),1-np.exp(-2)])
+# # plt.suptitle(f'{lname.split("/")[-1]}')
+# plt.show()
 
 
 print(f'saving corner likelihood results to {lname}')
