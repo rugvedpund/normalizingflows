@@ -19,9 +19,12 @@ def exp(l,numpy=True):
     else: 
         return [np.exp((ll-max(l))/2) for ll in l]
 
+def T_CMB(freqs):
+    return 2.718*np.ones_like(freqs)
+
 def T_DA(amp,width,nu_min,cmb=False):
     freqs=np.arange(1,51)
-    if cmb: return amp*np.ones_like(freqs)
+    if cmb: return amp*T_CMB(freqs)
     return amp*lusee.MonoSkyModels.T_DarkAges_Scaled(freqs,nu_rms=width,nu_min=nu_min)
 
 def get_amp_width_numin(npoints,amin=0,amax=3.0,wmin=10.0,wmax=20.0,nmin=10.0,nmax=20.0,logspace=False):
