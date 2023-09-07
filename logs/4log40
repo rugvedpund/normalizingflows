@@ -1,8 +1,0 @@
-sigma 8.0
-subsample_factor 40
-chromatic False
-galcut 15.0
-noPCA False
-append None
-(50, 196608)
-smoothing with 8.0 deg, and chromatic False
