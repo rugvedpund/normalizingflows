@@ -36,6 +36,7 @@ parser.add_argument('--diffCombineSigma',action='store_true') #bool, whether to 
 parser.add_argument('--avgAdjacentFreqBins',action='store_true') #bool, whether to average adjacent freq bins
 
 parser.add_argument('--retrain', action='store_true')
+parser.add_argument('--appendLik', type=str, default='', required=False)
 args=parser.parse_args()
 
 refargs=nf.Args()
@@ -75,7 +76,9 @@ if args.retrain: flow.train(flow.train_data, flow.validate_data, nocuda=False, s
 
 #3D corner
 npoints=50
-kwargs={'amin':0.975,'amax':1.025,'wmin':13.99,'wmax':14.01,'nmin':16.35,'nmax':16.45}
+kwargs={'amin':0.9,'amax':1.1,'wmin':13.9,'wmax':14.1,'nmin':16.35,'nmax':16.45}
+# kwargs={'amin':0.5,'amax':1.5,'wmin':13.5,'wmax':14.5,'nmin':16.0,'nmax':16.8}
+# kwargs={'amin':0.01,'amax':2.0,'wmin':13.0,'wmax':15.00,'nmin':15.4,'nmax':17.4}
 # kwargs={'amin':0.0,'amax':50.0,'wmin':10.0,'wmax':18.0,'nmin':12.4,'nmax':20.4}
 attempt=0
 done=False
@@ -99,8 +102,9 @@ while done==False:
             kwargs[p[0]+'max']+=2*constraints[p+'+']
             #keep min >=0.0
             if kwargs[p[0]+'min']<0.0: 
-                done=True
-                print('min<0.0, breaking')
+                kwargs[p[0]+'min']=1e-12
+                # done=True
+                # print('min<0.0, breaking')
         
         if constraints[p+'+-']<0.2*(kwargs[p[0]+'max']-kwargs[p[0]+'min']):
             print(f"min/max too big, updating {p}...")
