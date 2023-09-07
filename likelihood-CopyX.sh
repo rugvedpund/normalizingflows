@@ -1,27 +1,21 @@
 #!/bin/bash
 
-# noise='0.0 0.00001 0.001 0.1'
-noiseseed='0 1 2'
-# sigmas='4 6'
+noiseSeed='0 1 2'
+appendId='0 1 2 3 4 5 6 7 8 9'
 
-# for s in $sigmas
-# do
-
-# for n in $noise
-# do
-
-for ns in $noiseseed
+for ns in $noiseSeed
 do
 
+for app in $appendId
+do
 
-python runAll.py 2.0 --combineSigma '4 6' --noise 0.0 --plot 'all' --noisyT21 --noiseSeed $ns --append '_SVD' --gainFluctuationLevel 0.01 --gFdebug 3 --retrain &
-python runAll.py 2.0 --combineSigma '4 6' --noise 0.0 --plot 'all' --noisyT21 --noiseSeed $ns --append '_SVD' --gainFluctuationLevel 0.05 --gFdebug 3 --retrain
+python runAll.py 2.0 --noise 0.0 --plot 'all' --noisyT21 --noiseSeed $ns --append "_SVD_${app}" --chromatic --retrain
+# python runAll.py 2.0 --noise 0.1 --plot 'all' --noisyT21 --noiseSeed $ns --append "_SVD_${app}" --retrain
+
 wait
 
 done
-
-# done
-# done
+done
 
 echo 
 
