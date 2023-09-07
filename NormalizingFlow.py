@@ -9,6 +9,7 @@ import matplotlib
 import healpy as hp
 import fitsio
 import os
+import corner
 
 root=os.environ['LUSEE_ML'] #specify path to save/load models and likelihood results
 
@@ -18,8 +19,9 @@ def exp(l,numpy=True):
     else: 
         return [np.exp((ll-max(l))/2) for ll in l]
 
-def T_DA(amp,width,nu_min):
+def T_DA(amp,width,nu_min,cmb=False):
     freqs=np.arange(1,51)
+    if cmb: return amp*np.ones_like(freqs)
     return amp*lusee.MonoSkyModels.T_DarkAges_Scaled(freqs,nu_rms=width,nu_min=nu_min)
 
 def get_amp_width_numin(npoints,amin=0,amax=3.0,wmin=10.0,wmax=20.0,nmin=10.0,nmax=20.0,logspace=False):
@@ -34,11 +36,11 @@ def uniform_grid(npoints,**kwargs):
     samples=np.vstack(list(map(np.ravel,g))).T
     return samples
 
-def get_t21vs(npoints,**kwargs):
+def get_t21vs(npoints,cmb=False,**kwargs):
     samples=uniform_grid(npoints,**kwargs)
     t21_vs=np.zeros((50,npoints**3))
     for i,(a,w,n) in enumerate(samples):
-        t21_vs[:,i]=T_DA(a,w,n)
+        t21_vs[:,i]=T_DA(a,w,n,cmb=cmb)
     return samples,t21_vs
 
 def uniform_grid2d(npoints,vs,**kwargs): #vs= WvA NvA WvN
@@ -58,11 +60,11 @@ def get_t21vs2d(npoints,vs,**kwargs):  #vs= WvA NvA WvN
         if vs=='WvN': t21_vs[:,i]=T_DA(amp=1.0,width=x,nu_min=y)
     return samples,t21_vs
 
-def get_t21vs1d(npoints,vs,**kwargs):
+def get_t21vs1d(npoints,vs,cmb=False,**kwargs):
     amp,width,nu_min=get_amp_width_numin(npoints,**kwargs)
     if vs=='A': 
         samples=amp
-        tDA=lambda xx:T_DA(amp=xx,width=14.0,nu_min=16.4)
+        tDA=lambda xx:T_DA(amp=xx,width=14.0,nu_min=16.4,cmb=cmb)
     if vs=='W': 
         samples=width
         tDA=lambda xx:T_DA(amp=1.0,width=xx,nu_min=16.4)
@@ -93,6 +95,7 @@ def get_lname(args,plot):
     if args.nPCA: lname+=f'_nPCA{pca}'
     if args.gainFluctuationLevel is not None: lname+=f'_gainFluctuation{args.gainFluctuationLevel}_gFdebug{args.gFdebug}'
     if args.append: lname+=args.append
+    if args.appendLik: lname+=args.appendLik
 
     lname+=f'_noisyT21{args.noisyT21}_vs{plot}_DAfactor{args.DA_factor}_freqFluctuationLevel{args.freqFluctuationLevel}'
     return lname
@@ -106,7 +109,6 @@ def get_samplesAndLikelihood(args,plot,verbose=False):
     return samples,likelihood
 
 def get_constraints(s,ll):
-    import corner
     #assume amp,width,numin
     params=['amp','width','numin']
     out={'amp':0.0,'amp+':0.0,'amp-':0.0,
@@ -230,12 +232,12 @@ class FlowAnalyzerV2(NormalizingFlow):
 
         #do diffCombineSigma
         if self.diffCombineSigma:
-            print('doing diffCombineSigma for combineSigma')
             self.fgsmooth_diff=np.zeros_like(self.fgsmooth)
             # difference between fg_cS and fg_cS[0] except for fg_cS[0]
             self.fgsmooth_diff[:self.nfreq,:]=self.fg_cS[0,:,:].copy()
             for isig,sig in enumerate(sigmas):
                 if isig==0: continue
+                print('doing diffCombineSigma for combineSigma')
                 self.fgsmooth_diff[isig*self.nfreq:(isig+1)*self.nfreq,:]=self.fg_cS[isig,:,:].copy()-self.fg_cS[isig-1,:,:].copy()
             self.fgsmooth=self.fgsmooth_diff.copy()
             print(f'{self.fgsmooth.shape=}')
@@ -340,11 +342,10 @@ class FlowAnalyzerV2(NormalizingFlow):
         self.gainF=np.random.normal(0,gainFluctuationLevel if gainFluctuationLevel is not None else 0.0,ndata)
         template=lusee.MonoSkyModels.T_DarkAges_Scaled(freqs,nu_rms=14,nu_min=16.4,A=0.04)
         fgmeans=fgsmooth.mean(axis=1)
-        #does not work for combineSigma
-        if gFdebug==0: return fgsmooth
-        if gFdebug==1: return fgsmooth + fgsmooth*self.gainF
-        if gFdebug==2: return fgsmooth + np.outer(template,self.gainF)
-        if gFdebug==3: return fgsmooth + fgsmooth*self.gainF + np.outer(template,self.gainF)
+        if gFdebug==0: return fgsmooth.copy()
+        if gFdebug==1: return fgsmooth.copy() + fgsmooth.copy()*self.gainF.copy()
+        if gFdebug==2: return fgsmooth.copy() + np.outer(template,self.gainF.copy())
+        if gFdebug==3: return fgsmooth.copy() + fgsmooth.copy()*self.gainF.copy() + np.outer(template,1.0+self.gainF.copy())
         # if anything else
         raise NotImplementedError
     
@@ -396,7 +397,8 @@ class Args:
         nPCA='',
         diffCombineSigma=True,
         avgAdjacentFreqBins=False,
-        retrain=False
+        retrain=False,
+        appendLik=''
         ):
 
         self.sigma=sigma
@@ -419,6 +421,7 @@ class Args:
         self.diffCombineSigma=diffCombineSigma
         self.avgAdjacentFreqBins=avgAdjacentFreqBins
         self.retrain=retrain
+        self.appendLik=appendLik
     
     def print(self):
         for arg in vars(self):
