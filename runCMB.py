@@ -80,15 +80,15 @@ lname=nf.get_lname(args,plot=vs)
 print(f'saving 1d likelihood results to {lname}')
 np.savetxt(lname,np.column_stack([samples1d,likelihood1d]),header='amp,width,numin,loglikelihood')
 
-s,ll=nf.get_samplesAndLikelihood(args,plot='A')
-quantiles=corner.core.quantile(s[:,0],[0.32,0.5,0.68,0.95],weights=nf.exp(ll))
-dq=quantiles[2]-quantiles[0]
-maxll=s[np.argmax(ll),0]
-for x in quantiles:
-    plt.axvline(2.718*x,c='k',alpha=0.5,lw=0.5)
-# plt.axvline(40,color='k')
-plt.plot(2.718*s,nf.exp(ll))
-plt.xscale('log')
-# plt.xlim(3e3,5e3)
-plt.title(f'Amplitude {2.718*quantiles[1]:.3f} +/-{2.718*dq:.3f} K, <{2.718*quantiles[3]:.3f} K 95% CL, max likelihood {2.718*maxll:.3f} K')
-plt.show()
+# s,ll=nf.get_samplesAndLikelihood(args,plot='A')
+# quantiles=corner.core.quantile(s[:,0],[0.32,0.5,0.68,0.95],weights=nf.exp(ll))
+# dq=quantiles[2]-quantiles[0]
+# maxll=s[np.argmax(ll),0]
+# for x in quantiles:
+#     plt.axvline(2.718*x,c='k',alpha=0.5,lw=0.5)
+# # plt.axvline(40,color='k')
+# plt.plot(2.718*s,nf.exp(ll))
+# plt.xscale('log')
+# # plt.xlim(3e3,5e3)
+# plt.title(f'Amplitude {2.718*quantiles[1]:.3f} +/-{2.718*dq:.3f} K, <{2.718*quantiles[3]:.3f} K 95% CL, max likelihood {2.718*maxll:.3f} K')
+# plt.show()

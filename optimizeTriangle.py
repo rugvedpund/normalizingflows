@@ -76,7 +76,7 @@ if args.retrain: flow.train(flow.train_data, flow.validate_data, nocuda=False, s
 
 #3D corner
 npoints=50
-kwargs={'amin':0.9,'amax':1.1,'wmin':13.9,'wmax':14.1,'nmin':16.35,'nmax':16.45}
+kwargs={'amin':0.98,'amax':1.25,'wmin':13.95,'wmax':14.05,'nmin':16.35,'nmax':16.45}
 # kwargs={'amin':0.5,'amax':1.5,'wmin':13.5,'wmax':14.5,'nmin':16.0,'nmax':16.8}
 # kwargs={'amin':0.01,'amax':2.0,'wmin':13.0,'wmax':15.00,'nmin':15.4,'nmax':17.4}
 # kwargs={'amin':0.0,'amax':50.0,'wmin':10.0,'wmax':18.0,'nmin':12.4,'nmax':20.4}
@@ -124,7 +124,7 @@ while done==False:
     #break if too many attempts
     print('attempt#:',attempt)
     attempt+=1
-    if attempt>10: 
+    if attempt>0: 
         print('too many attempts, breaking')
         done=True
 
@@ -136,13 +136,13 @@ for arg in vars(args):
     if getattr(refargs,arg)!=getattr(args,arg): print("==>",BOLD,RED,arg,getattr(args,arg),END)
     else: print(arg, getattr(args, arg))
     
-# corner.corner(samples,weights=nf.exp(likelihood),bins=50,
-#             labels=['Amplitude','Width',r'$\nu_{min}$'], truths=[1.0,14.0,16.4],
-#             verbose=True, plot_datapoints=False, show_titles=True,
-#             levels=[1-np.exp(-0.5),1-np.exp(-2)])
-# # plt.suptitle(f'{lname.split("/")[-1]}')
-# plt.show()
-
-
 print(f'saving corner likelihood results to {lname}')
 np.savetxt(lname,np.column_stack([samples,likelihood]),header='amp,width,numin,loglikelihood')
+
+
+corner.corner(samples,weights=nf.exp(likelihood),bins=50,
+            labels=['Amplitude','Width',r'$\nu_{min}$'], truths=[1.0,14.0,16.4],
+            verbose=True, plot_datapoints=False, show_titles=True,
+            levels=[1-np.exp(-0.5),1-np.exp(-2)])
+# plt.suptitle(f'{lname.split("/")[-1]}')
+plt.show()

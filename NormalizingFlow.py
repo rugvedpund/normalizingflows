@@ -20,7 +20,7 @@ def exp(l,numpy=True):
         return [np.exp((ll-max(l))/2) for ll in l]
 
 def T_CMB(freqs):
-    return 2.718*np.ones_like(freqs)
+    return 2.725*np.ones_like(freqs)
 
 def T_DA(amp,width,nu_min,cmb=False):
     freqs=np.arange(1,51)
@@ -146,7 +146,7 @@ def get_nLayerBest(iteration,trainlogp,vallogp,best,delta_logp=10):
     b=int(best[-1])
     n=int(iteration[np.where(trainlogp-vallogp<delta_logp)][-1])
     return min(n-1,b-1)
-    
+
 class NormalizingFlow:
     def __init__(self,nocuda,loadPath=''):
         self.device=torch.device('cpu') if nocuda else torch.device('cuda')
@@ -226,12 +226,23 @@ class FlowAnalyzerV2(NormalizingFlow):
         self.fg_cS=np.zeros((self.nsigmas,*self.fg.shape))
         self.fgnoisy=self.fg.copy()+self.noise.copy()
         
+        f=30
+        self.gainFmap=self.getGainFluctuationMap()
+        hp.mollview(self.gainFmap[f,:],title=f'gainF map {self.gainFluctuationLevel}')
+        hp.mollview(self.fgnoisy[f,:],title='noisy')
         for isig,sig in enumerate(sigmas):
             self.fg_cS[isig,:,:]=self.smooth(self.fgnoisy.copy(),sig,self.chromatic)
-            self.fg_cS[isig,:,:]=self.includeGainFluctuations(self.fg_cS[isig,:,:].copy(),
-                                                              self.gainFluctuationLevel,self.gFdebug)
+            hp.mollview(self.fg_cS[isig,f,:],title=f'smooth {sig}')
+
+        self.fgmeans_smooth=self.fg_cS.reshape(self.nsigmas*self.nfreq,-1).mean(axis=1)
+        
+        for isig,sig in enumerate(sigmas):
+            self.fg_cS[isig,:,:]=self.multiplyGainFluctuations(self.fg_cS[isig,:,:].copy(),sig)
+            hp.mollview(self.fg_cS[isig,f,:],title=f'smooth*gainF {self.gainFluctuationLevel} {sig}')
         self.fgsmooth=self.fg_cS.reshape(self.nsigmas*self.nfreq,-1)
         print(f'{self.fgsmooth.shape=}')
+
+        self.fgmeans_smoothgF=self.fg_cS.reshape(self.nsigmas*self.nfreq,-1).mean(axis=1)
 
         #do diffCombineSigma
         if self.diffCombineSigma:
@@ -261,8 +272,12 @@ class FlowAnalyzerV2(NormalizingFlow):
         # s=np.argsort(np.abs(eva))[::-1]
         # self.eva,self.eve=np.abs(eva[s]),eve[:,s]
         
+        self.fgmeans_cut=self.fgcut.mean(axis=1)
+
         #subsample and project
         self.fgss=self.subsample(self.fgsmooth.copy(),self.subsampleSigma,self.galcut)
+
+        self.fgmeans_ss=self.fgss.mean(axis=1)
 
         #do SVD
         self.eve,self.eva,self.vt=np.linalg.svd(self.fgss)
@@ -338,20 +353,6 @@ class FlowAnalyzerV2(NormalizingFlow):
             fgsmooth[f,:]=hp.sphtfunc.smoothing(fg[f,:],sigma=np.deg2rad(sigma_f))
         return fgsmooth
     
-    def includeGainFluctuations(self, fgsmooth, gainFluctuationLevel, gFdebug):
-        print(f'including gain fluctuations of level: {gainFluctuationLevel}')
-        _,ndata=fgsmooth.shape
-        freqs=np.arange(1,51)
-        self.gainF=np.random.normal(0,gainFluctuationLevel if gainFluctuationLevel is not None else 0.0,ndata)
-        template=lusee.MonoSkyModels.T_DarkAges_Scaled(freqs,nu_rms=14,nu_min=16.4,A=0.04)
-        fgmeans=fgsmooth.mean(axis=1)
-        if gFdebug==0: return fgsmooth.copy()
-        if gFdebug==1: return fgsmooth.copy() + fgsmooth.copy()*self.gainF.copy()
-        if gFdebug==2: return fgsmooth.copy() + np.outer(template,self.gainF.copy())
-        if gFdebug==3: return fgsmooth.copy() + fgsmooth.copy()*self.gainF.copy() + np.outer(template,1.0+self.gainF.copy())
-        # if anything else
-        raise NotImplementedError
-    
     def galaxy_cut(self,fg,b_min):
         print(f'doing galcut for b_min={b_min} deg')
         _,npix=fg.shape
@@ -379,6 +380,28 @@ class FlowAnalyzerV2(NormalizingFlow):
         flowt21data_fF=self.t21data if debugfF else (1+freqFluctuationLevel*np.cos(6*np.pi/50*freqs))*self.t21data
         l=(self.fgmeansdata[:,None]+DA_factor*flowt21data_fF[:,None]-t21_vsdata).T
         return self._likelihood(l,end).cpu().numpy()
+
+    def getGainFluctuationMap(self):
+        #does not work for chromatic maps
+        gF=np.random.normal(0.0,self.gainFluctuationLevel,self.npix)
+        self.gFtiled=np.tile(gF,(self.nfreq,1))
+        print(f'getting base gainF map for gFLevel {self.gainFluctuationLevel} and sigma {self.sigma}')
+        self.gFsmooth=self.smooth(self.gFtiled,self.sigma,self.chromatic)
+        std=np.std(self.gFsmooth[0,:])
+        return 1.0+np.nan_to_num(self.gainFluctuationLevel/std*self.gFsmooth)
+    
+    def multiplyGainFluctuations(self,fgsmooth,sigma):
+        gFmap=self.gainFmap
+        freqs=np.arange(1,51)
+        template=lusee.MonoSkyModels.T_DarkAges_Scaled(freqs,nu_rms=14,nu_min=16.4,A=0.04)
+        gFtemplate=template[:,None]*gFmap
+        if sigma==self.sigma:
+            print('multiplying gainF')
+            gFresmooth=gFmap.copy()
+        else:
+            print(f'resmoothing by {sigma} and multiplying gainF')
+            gFresmooth=self.smooth(gFmap.copy(),sigma,chromatic=False)
+        return fgsmooth.copy()*gFresmooth.copy() + template[:,None]*gFresmooth.copy()
 
 class Args:
     def __init__(self,sigma=2.0,
