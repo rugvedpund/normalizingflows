@@ -216,6 +216,8 @@ class FlowAnalyzerV2(NormalizingFlow):
 
         #fg 
         self.nfreq,self.npix=self.fg.shape
+
+        # self.fg=np.random.rand(self.nfreq,self.npix)
         #set seed
         np.random.seed(self.noiseSeed)
         #generate noise
@@ -227,18 +229,21 @@ class FlowAnalyzerV2(NormalizingFlow):
         self.fgnoisy=self.fg.copy()+self.noise.copy()
         
         f=30
-        self.gainFmap=self.getGainFluctuationMap()
-        hp.mollview(self.gainFmap[f,:],title=f'gainF map {self.gainFluctuationLevel}')
         hp.mollview(self.fgnoisy[f,:],title='noisy')
         for isig,sig in enumerate(sigmas):
             self.fg_cS[isig,:,:]=self.smooth(self.fgnoisy.copy(),sig,self.chromatic)
-            hp.mollview(self.fg_cS[isig,f,:],title=f'smooth {sig}')
+            # hp.mollview(self.fg_cS[isig,f,:],title=f'smooth {sig}')
 
         self.fgmeans_smooth=self.fg_cS.reshape(self.nsigmas*self.nfreq,-1).mean(axis=1)
         
-        for isig,sig in enumerate(sigmas):
-            self.fg_cS[isig,:,:]=self.multiplyGainFluctuations(self.fg_cS[isig,:,:].copy(),sig)
-            hp.mollview(self.fg_cS[isig,f,:],title=f'smooth*gainF {self.gainFluctuationLevel} {sig}')
+        if self.gainFluctuationLevel!=0.0:
+            self.gainFmap=self.getGainFluctuationMap()
+            hp.mollview(self.gainFmap[f,:],title=f'gainF map {self.gainFluctuationLevel}')
+            for isig,sig in enumerate(sigmas):
+                self.fg_cS[isig,:,:]=self.multiplyGainFluctuations(self.fg_cS[isig,:,:].copy(),sig)
+                hp.mollview(self.fg_cS[isig,f,:],title=f'smooth*gainF {self.gainFluctuationLevel} {sig}')
+            
+        
         self.fgsmooth=self.fg_cS.reshape(self.nsigmas*self.nfreq,-1)
         print(f'{self.fgsmooth.shape=}')
 
@@ -311,7 +316,11 @@ class FlowAnalyzerV2(NormalizingFlow):
         if self.avgAdjacentFreqBins: 
             print('combining adjacent freq bins for t21')
             t21=(t21[::2]+t21[1::2])/2
-        self.t21=np.tile(t21,self.nsigmas)
+        if self.diffCombineSigma:
+            self.t21=np.zeros(self.nfreq*self.nsigmas)
+            self.t21[:50]=t21
+        else:
+            self.t21=np.tile(t21,self.nsigmas)
         self.pt21=self.eve.T@self.t21
         self.t21data=self.eve.T@self.t21/self.rms
         self.t21data=np.delete(self.t21data,self.nPCAarr)
@@ -388,20 +397,22 @@ class FlowAnalyzerV2(NormalizingFlow):
         print(f'getting base gainF map for gFLevel {self.gainFluctuationLevel} and sigma {self.sigma}')
         self.gFsmooth=self.smooth(self.gFtiled,self.sigma,self.chromatic)
         std=np.std(self.gFsmooth[0,:])
-        return 1.0+np.nan_to_num(self.gainFluctuationLevel/std*self.gFsmooth)
+        return np.nan_to_num(self.gainFluctuationLevel/std*self.gFsmooth)
     
     def multiplyGainFluctuations(self,fgsmooth,sigma):
         gFmap=self.gainFmap
         freqs=np.arange(1,51)
         template=lusee.MonoSkyModels.T_DarkAges_Scaled(freqs,nu_rms=14,nu_min=16.4,A=0.04)
-        gFtemplate=template[:,None]*gFmap
         if sigma==self.sigma:
             print('multiplying gainF')
             gFresmooth=gFmap.copy()
         else:
             print(f'resmoothing by {sigma} and multiplying gainF')
             gFresmooth=self.smooth(gFmap.copy(),sigma,chromatic=False)
-        return fgsmooth.copy()*gFresmooth.copy() + template[:,None]*gFresmooth.copy()
+        self.fgsmoothgF=fgsmooth.copy()*gFresmooth.copy()
+        self.t21smoothgF=template[:,None]*gFresmooth.copy()
+
+        return fgsmooth.copy() + self.fgsmoothgF + self.t21smoothgF
 
 class Args:
     def __init__(self,sigma=2.0,
