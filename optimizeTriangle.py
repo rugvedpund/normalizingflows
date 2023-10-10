@@ -68,18 +68,19 @@ flow.set_t21(t21, include_noise=args.noisyT21)
 if args.retrain: flow.train(flow.train_data, flow.validate_data, nocuda=False, savePath=fname,retrain=True)
 
 # npoints=1000
-# # kwargs={'amin':0.0,'amax':150.0,'wmin':1.0,'wmax':40.0,'nmin':1.0,'nmax':40.0}
-# # kwargs={'amin':0.0,'amax':3.0,'wmin':10.0,'wmax':20.0,'nmin':10.0,'nmax':20.0}
-# # kwargs={'amin':0.5,'amax':1.5,'wmin':11.0,'wmax':17.0,'nmin':15.0,'nmax':18.0}
-# kwargs={'amin':0.01,'amax':100.0,'wmin':11.0,'wmax':17.0,'nmin':15.0,'nmax':18.0,
+# kwargs={'amin':0.0,'amax':150.0,'wmin':1.0,'wmax':40.0,'nmin':1.0,'nmax':40.0}
+# kwargs={'amin':0.0,'amax':3.0,'wmin':10.0,'wmax':20.0,'nmin':10.0,'nmax':20.0}
+# kwargs={'amin':0.5,'amax':1.5,'wmin':11.0,'wmax':17.0,'nmin':15.0,'nmax':18.0}
+#kwargs={'amin':0.01,'amax':100.0,'wmin':11.0,'wmax':17.0,'nmin':15.0,'nmax':18.0,
 #          'logspace':True}
+#
 
 #3D corner
 npoints=50
-kwargs={'amin':0.98,'amax':1.25,'wmin':13.95,'wmax':14.05,'nmin':16.35,'nmax':16.45}
-# kwargs={'amin':0.5,'amax':1.5,'wmin':13.5,'wmax':14.5,'nmin':16.0,'nmax':16.8}
-# kwargs={'amin':0.01,'amax':2.0,'wmin':13.0,'wmax':15.00,'nmin':15.4,'nmax':17.4}
-# kwargs={'amin':0.0,'amax':50.0,'wmin':10.0,'wmax':18.0,'nmin':12.4,'nmax':20.4}
+kwargs={'amin':0.95,'amax':1.05,'wmin':13.9,'wmax':14.1,'nmin':16.35,'nmax':16.45}
+# kwargs={'amin':0.85,'amax':1.15,'wmin':13.5,'wmax':14.5,'nmin':16.0,'nmax':16.8}
+# kwargs={'amin':0.5,'amax':2.0,'wmin':13.0,'wmax':16.0,'nmin':15.4,'nmax':17.4}
+# kwargs={'amin':0.01,'amax':4.0,'wmin':13.0,'wmax':15.0,'nmin':15.4,'nmax':17.4}
 attempt=0
 done=False
 while done==False:
@@ -120,29 +121,52 @@ while done==False:
     if kwargs==oldkwargs:
         print('done!')
         done=True
-
     #break if too many attempts
     print('attempt#:',attempt)
     attempt+=1
     if attempt>0: 
         print('too many attempts, breaking')
         done=True
-
-
 #save
 lname=nf.get_lname(args,plot='all')
-
 for arg in vars(args):
     if getattr(refargs,arg)!=getattr(args,arg): print("==>",BOLD,RED,arg,getattr(args,arg),END)
     else: print(arg, getattr(args, arg))
-    
 print(f'saving corner likelihood results to {lname}')
 np.savetxt(lname,np.column_stack([samples,likelihood]),header='amp,width,numin,loglikelihood')
 
 
-corner.corner(samples,weights=nf.exp(likelihood),bins=50,
-            labels=['Amplitude','Width',r'$\nu_{min}$'], truths=[1.0,14.0,16.4],
-            verbose=True, plot_datapoints=False, show_titles=True,
-            levels=[1-np.exp(-0.5),1-np.exp(-2)])
-# plt.suptitle(f'{lname.split("/")[-1]}')
-plt.show()
+#1D
+npoints=2000
+# kwargs={'amin':0.01,'amax':100.0,'wmin':11.0,'wmax':17.0,'nmin':15.0,'nmax':18.0,
+        #   'logspace':True}
+kwargs={'amin':0.01,'amax':1000.0,'wmin':11.0,'wmax':17.0,'nmin':15.0,'nmax':18.0,
+         'logspace':True}
+for vs in ['A']:
+    print(f'getting 1d likelihood for {vs}...')
+    samples1d,t21_vs1d=nf.get_t21vs1d(npoints,vs,**kwargs)
+    t21vsdata1d=flow.proj_t21(t21_vs1d,include_noise=True)
+    likelihood1d=flow.get_likelihood(t21vsdata1d,args.freqFluctuationLevel,args.DA_factor,debugfF=False)
+    lname=nf.get_lname(args,plot=vs)
+    print(f'saving 1d likelihood results to {lname}')
+    np.savetxt(lname,np.column_stack([samples1d,likelihood1d]),header='amp,width,numin,loglikelihood')
+
+##plot
+#corner.corner(samples,weights=nf.exp(likelihood),bins=50,
+#            labels=['Amplitude','Width',r'$\nu_{min}$'], truths=[1.0,14.0,16.4],
+#            verbose=True, plot_datapoints=False, show_titles=True,
+#            levels=[1-np.exp(-0.5),1-np.exp(-2)])
+## plt.suptitle(f'{lname.split("/")[-1]}')
+#plt.show()
+#
+#
+#s,ll=nf.get_samplesAndLikelihood(args,plot='A')
+#quantiles=corner.core.quantile(s[:,0],[0.05,0.5,0.95],weights=nf.exp(ll))
+#for x in quantiles:
+#    plt.axvline(40*x,c='k',alpha=0.5,lw=0.5)
+#plt.axvline(40,color='k')
+#plt.plot(40*s,nf.exp(ll))
+#plt.xscale('log')
+## plt.xlim(10,2e3)
+#plt.title(f'Amplitude 95% confidence: <{40*quantiles[-1]:.3f} mK')
+#plt.show()

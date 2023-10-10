@@ -229,7 +229,7 @@ class FlowAnalyzerV2(NormalizingFlow):
         self.fgnoisy=self.fg.copy()+self.noise.copy()
         
         f=30
-        hp.mollview(self.fgnoisy[f,:],title='noisy')
+        # hp.mollview(self.fgnoisy[f,:],title='noisy')
         for isig,sig in enumerate(sigmas):
             self.fg_cS[isig,:,:]=self.smooth(self.fgnoisy.copy(),sig,self.chromatic)
             # hp.mollview(self.fg_cS[isig,f,:],title=f'smooth {sig}')
@@ -238,10 +238,10 @@ class FlowAnalyzerV2(NormalizingFlow):
         
         if self.gainFluctuationLevel!=0.0:
             self.gainFmap=self.getGainFluctuationMap()
-            hp.mollview(self.gainFmap[f,:],title=f'gainF map {self.gainFluctuationLevel}')
+            # hp.mollview(self.gainFmap[f,:],title=f'gainF map {self.gainFluctuationLevel}')
             for isig,sig in enumerate(sigmas):
                 self.fg_cS[isig,:,:]=self.multiplyGainFluctuations(self.fg_cS[isig,:,:].copy(),sig)
-                hp.mollview(self.fg_cS[isig,f,:],title=f'smooth*gainF {self.gainFluctuationLevel} {sig}')
+                # hp.mollview(self.fg_cS[isig,f,:],title=f'smooth*gainF {self.gainFluctuationLevel} {sig}')
             
         
         self.fgsmooth=self.fg_cS.reshape(self.nsigmas*self.nfreq,-1)
@@ -286,7 +286,8 @@ class FlowAnalyzerV2(NormalizingFlow):
 
         #do SVD
         self.eve,self.eva,self.vt=np.linalg.svd(self.fgss)
-
+        # self.eve,self.eva,self.vt=np.linalg.svd(self.fgss - self.fgss.mean(axis=1)[:,None])
+        # print('new')
         print(f'{self.fgss.shape=}')
         proj_fg=self.eve.T@(self.fgss - self.fgss.mean(axis=1)[:,None])
         self.pfg=proj_fg.copy()
@@ -318,7 +319,7 @@ class FlowAnalyzerV2(NormalizingFlow):
             t21=(t21[::2]+t21[1::2])/2
         if self.diffCombineSigma:
             self.t21=np.zeros(self.nfreq*self.nsigmas)
-            self.t21[:50]=t21
+            self.t21[:50]=t21.copy()
         else:
             self.t21=np.tile(t21,self.nsigmas)
         self.pt21=self.eve.T@self.t21
@@ -330,7 +331,12 @@ class FlowAnalyzerV2(NormalizingFlow):
         t21_noisy=t21_vs+self.noise.mean(axis=1)[:,None] if include_noise else np.zeros_like(t21_vs)
         if self.avgAdjacentFreqBins:
             t21_noisy=(t21_noisy[::2,:]+t21_noisy[1::2,:])/2
-        t21cS=np.tile(t21_noisy,(self.nsigmas,1))
+        if self.diffCombineSigma:
+            t21cS=np.zeros((self.nfreq*self.nsigmas,t21_noisy.shape[1]))
+            t21cS[:self.nfreq,:]=t21_noisy.copy()
+        else:
+            t21cS=np.tile(t21_noisy,(self.nsigmas,1))
+        print(t21cS.shape)
         proj_t21=(self.eve.T@t21cS)/self.rms[:,None]
         proj_t21=np.delete(proj_t21,self.nPCAarr,axis=0)
         return proj_t21
