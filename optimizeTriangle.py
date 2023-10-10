@@ -51,7 +51,7 @@ for arg in vars(args):
     
 ###-------------------------------------------------------------------------------------------------###
 
-root=os.environ['LUSEE_ML']
+root=os.environ['NF_OUTDIR']
 
 #load ulsa map
 fg=fitsio.read(f'{root}200.fits')

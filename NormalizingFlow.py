@@ -11,7 +11,7 @@ import fitsio
 import os
 import corner
 
-root=os.environ['LUSEE_ML'] #specify path to save/load models and likelihood results
+root=os.environ['NF_OUTDIR'] #specify path to save/load models and likelihood results
 
 def exp(l,numpy=True):
     if numpy: 
