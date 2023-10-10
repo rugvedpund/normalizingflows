@@ -42,10 +42,10 @@ for arg in vars(args):
     
 ###-------------------------------------------------------------------------------------------------###
 
-root=os.environ['NF_OUTDIR']
+root=os.environ['NF_WORKDIR']
 
 #load ulsa map
-fg=fitsio.read(f'{root}200.fits')
+fg=fitsio.read(f'{root}ulsa.fits')
 
 #try loading
 fname=nf.get_fname(args)

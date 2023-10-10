@@ -11,7 +11,7 @@ import fitsio
 import os
 import corner
 
-root=os.environ['NF_OUTDIR'] #specify path to save/load models and likelihood results
+root=os.environ['NF_WORKDIR'] #specify path to save/load models and likelihood results
 
 def exp(l,numpy=True):
     if numpy: 
@@ -201,7 +201,7 @@ class FlowAnalyzerV2(NormalizingFlow):
         avgAdjacentFreqBins: bool, whether to combine adjacent freq bins
         """
 
-        self.fg=fitsio.read(f'{root}200.fits')
+        self.fg=fitsio.read(f'{root}ulsa.fits')
         self.sigma=args.sigma
         self.chromatic=args.chromatic
         self.galcut=args.galcut
