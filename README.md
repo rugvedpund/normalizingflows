@@ -1,6 +1,6 @@
 # normalizingflows
 
-This package implements a normalizing flow algorithm for Dark Ages signal separation.
+This package implements a normalizing flow algorithm for Dark Ages signal separation. All results are published at https://arxiv.org/pdf/2310.06134.pdf
 
 ## Usage
 
