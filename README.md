@@ -15,6 +15,6 @@ export NF_WORKDIR=/home/rugved/path/to/working/directory
 To run the code, you can use the two scripts `runDA.py` and `runCMB.py` for Dark Ages and CMB signal separation respectively as follows:
 
 ```bash
-python runDA.py --noisyT21 --diffCombineSigma --sigma 2.0 --noise 0.0 --retrain
+python runDA.py --noisyT21 --sigma 2.0 --noise 0.0 --retrain
 ```
 which should train and generate the corner plot and the amplitude plot for the simple case for a 2 deg noiseless map. Further arguments can be passed to the script, explained inside it.
