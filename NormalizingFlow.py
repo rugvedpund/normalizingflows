@@ -285,8 +285,7 @@ class FlowAnalyzerV2(NormalizingFlow):
         self.fgmeans_ss=self.fgss.mean(axis=1)
 
         #do SVD
-        self.eve,self.eva,self.vt=np.linalg.svd(self.fgss)
-        # self.eve,self.eva,self.vt=np.linalg.svd(self.fgss - self.fgss.mean(axis=1)[:,None])
+        self.eve,self.eva,self.vt=np.linalg.svd(self.fgss - self.fgss.mean(axis=1)[:,None])
         # print('new')
         print(f'{self.fgss.shape=}')
         proj_fg=self.eve.T@(self.fgss - self.fgss.mean(axis=1)[:,None])
