@@ -204,6 +204,7 @@ class FlowAnalyzerV2(NormalizingFlow):
         self.sigma=args.sigma
         self.chromatic=args.chromatic
         self.galcut=args.galcut
+        self.SNRpp=args.SNRpp
         self.noise_K=args.noise
         self.noiseSeed=args.noiseSeed
         self.subsampleSigma=args.subsampleSigma
@@ -222,7 +223,12 @@ class FlowAnalyzerV2(NormalizingFlow):
         # self.fg=np.random.rand(self.nfreq,self.npix)
         np.random.seed(self.noiseSeed)
         #generate noise
-        self.noise=self.generate_noise(self.fg.copy(),self.noise_K,self.subsampleSigma)
+        if self.SNRpp is not None:
+            print(f'generating radiometer noise with SNRpp={self.SNRpp}')
+            self.noise=self.generate_radiometer_noise(self.fg.copy(),self.SNRpp,self.subsampleSigma)
+        else:
+            print(f'generating noise with noise_K={self.noise_K}')
+            self.noise=self.generate_noise(self.fg.copy(),self.noise_K,self.subsampleSigma)
         sigmas=[self.sigma]+self.combineSigma
         print('doing sigmas', sigmas)
         self.nsigmas=len(sigmas)
@@ -349,6 +355,14 @@ class FlowAnalyzerV2(NormalizingFlow):
         noise=np.random.normal(0,noise_sigma,(nfreq,ndata))
         return noise
     
+    def generate_radiometer_noise(self,fg,snrperpixel,subsampleSigma):
+        nfreq,ndata=fg.shape
+        nside=self.sigma2nside(subsampleSigma)
+        npix=hp.nside2npix(nside)
+        noise_sigma=fg.mean(axis=1)*np.sqrt(npix)/snrperpixel
+        noise=np.vstack([np.random.normal(0,s,ndata) for s in noise_sigma])
+        return noise        
+
     def sigma2nside(self, sigma):
         #done by hand
         sigma2nside_map={0.5:64, 1.0:32, 2.0:16, 4.0:8, 8.0:4}
@@ -427,6 +441,7 @@ class Args:
         noPCA=False,
         chromatic=False,
         combineSigma='',
+        SNRpp=None,
         noise=0.0,
         noiseSeed=0,
         subsampleSigma=2.0,
@@ -451,6 +466,7 @@ class Args:
         self.noPCA=noPCA
         self.chromatic=chromatic
         self.combineSigma=combineSigma
+        self.SNRpp=SNRpp
         self.noise=noise
         self.noiseSeed=noiseSeed
         self.subsampleSigma=subsampleSigma
