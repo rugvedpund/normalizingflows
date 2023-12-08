@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 #muust provide --noisyT21 and --diffCombineSigma!!!
 
 parser = argparse.ArgumentParser(description="Normalizing Flow for ULSA maps")
+parser.add_argument('--fgFITS', type=str, required=False, default='ulsa.fits')
 parser.add_argument('--sigma', type=float, default=2.0, required=False)
 parser.add_argument('--subsample_factor', type=int, default=None, required=False)
 parser.add_argument('--chromatic', action='store_true')
@@ -51,12 +52,6 @@ for arg in vars(args):
     
 ###-------------------------------------------------------------------------------------------------###
 
-root=os.environ['NF_WORKDIR']
-
-#load ulsa map
-fg=fitsio.read(f'{root}ulsa.fits')
-
-#try loading
 fname=nf.get_fname(args)
 flow=nf.FlowAnalyzerV2(nocuda=False,loadPath=fname)
 flow.set_fg(args)

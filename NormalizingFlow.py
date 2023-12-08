@@ -186,7 +186,6 @@ class FlowAnalyzerV2(NormalizingFlow):
         super().__init__(loadPath=loadPath,nocuda=nocuda)
     def set_fg(self,args):
         """
-        fg: foreground map of shape (nfreq,npix)
         sigma: smoothing scale in deg
         chromatic: bool, whether to use chromatic smoothing
         galcut: galactic cut in deg
@@ -199,9 +198,9 @@ class FlowAnalyzerV2(NormalizingFlow):
         nPCA: list of nPCA modes to remove
         diffCombineSigma: bool, whether to do fg_cS[sigma]-fg_cS[sigma-1]
         avgAdjacentFreqBins: bool, whether to combine adjacent freq bins
+        fgFITS: foreground map of shape (nfreq,npix)
         """
 
-        self.fg=fitsio.read(f'{root}ulsa.fits')
         self.sigma=args.sigma
         self.chromatic=args.chromatic
         self.galcut=args.galcut
@@ -214,11 +213,13 @@ class FlowAnalyzerV2(NormalizingFlow):
         self.diffCombineSigma=args.diffCombineSigma
         self.avgAdjacentFreqBins=args.avgAdjacentFreqBins
 
+        print(f'loading foreground map {args.fgFITS}')
+        self.fg=fitsio.read(f'{root}{args.fgFITS}')
+
         #fg 
         self.nfreq,self.npix=self.fg.shape
 
         # self.fg=np.random.rand(self.nfreq,self.npix)
-        #set seed
         np.random.seed(self.noiseSeed)
         #generate noise
         self.noise=self.generate_noise(self.fg.copy(),self.noise_K,self.subsampleSigma)
@@ -228,7 +229,7 @@ class FlowAnalyzerV2(NormalizingFlow):
         self.fg_cS=np.zeros((self.nsigmas,*self.fg.shape))
         self.fgnoisy=self.fg.copy()+self.noise.copy()
         
-        f=30
+        # f=30
         # hp.mollview(self.fgnoisy[f,:],title='noisy')
         for isig,sig in enumerate(sigmas):
             self.fg_cS[isig,:,:]=self.smooth(self.fgnoisy.copy(),sig,self.chromatic)
@@ -440,7 +441,8 @@ class Args:
         diffCombineSigma=True,
         avgAdjacentFreqBins=False,
         retrain=False,
-        appendLik=''
+        appendLik='',
+        fgFITS='ulsa.fits'
         ):
 
         self.sigma=sigma
@@ -464,7 +466,7 @@ class Args:
         self.avgAdjacentFreqBins=avgAdjacentFreqBins
         self.retrain=retrain
         self.appendLik=appendLik
-    
+        self.fgFITS=fgFITS
     def print(self):
         for arg in vars(self):
             print(arg, getattr(self, arg))
