@@ -58,21 +58,21 @@ flow=nf.FlowAnalyzerV2(nocuda=False,loadPath=fname)
 flow.set_fg(args)
 
 print('setting t21...')
-freqs=np.arange(1,51)
-t21=lusee.MonoSkyModels.T_DarkAges_Scaled(freqs,nu_rms=14,nu_min=16.4,A=0.04)
+freqs=np.linspace(51,100)
+t21=lusee.MonoSkyModels.T_CosmicDawn_Scaled(freqs,nu_rms=20,nu_min=67.5,A=0.130)
 flow.set_t21(t21, include_noise=args.noisyT21)
 if args.retrain: flow.train(flow.train_data, flow.validate_data, nocuda=False, savePath=fname,retrain=True)
 
 #3D corner
 npoints=50
-kwargs={'amin':0.95,'amax':1.05,'wmin':13.9,'wmax':14.1,'nmin':16.35,'nmax':16.45}
+kwargs={'amin':0.95,'amax':1.05,'wmin':19.0,'wmax':21.0,'nmin':66.5,'nmax':68.5}
 
 attempt=0
 done=False
 while done==False:
     print('getting 3d likelihood...')
     print(kwargs)
-    samples,t21_vs=nf.get_t21vs(npoints,**kwargs)
+    samples,t21_vs=nf.get_t21vs(npoints,cosmicdawn=True,**kwargs)
     t21_vsdata=flow.proj_t21(t21_vs,include_noise=True)
     likelihood=flow.get_likelihood(t21_vsdata,args.freqFluctuationLevel,args.DA_factor, debugfF=False)
     constraints=nf.get_constraints(samples,likelihood)
@@ -130,29 +130,29 @@ kwargs={'amin':0.01,'amax':1000.0,'wmin':11.0,'wmax':17.0,'nmin':15.0,'nmax':18.
          'logspace':True}
 for vs in ['A']:
     print(f'getting 1d likelihood for {vs}...')
-    samples1d,t21_vs1d=nf.get_t21vs1d(npoints,vs,**kwargs)
+    samples1d,t21_vs1d=nf.get_t21vs1d(npoints,vs,cosmicdawn=True,**kwargs)
     t21vsdata1d=flow.proj_t21(t21_vs1d,include_noise=True)
     likelihood1d=flow.get_likelihood(t21vsdata1d,args.freqFluctuationLevel,args.DA_factor,debugfF=False)
     lname=nf.get_lname(args,plot=vs)
     print(f'saving 1d likelihood results to {lname}')
     np.savetxt(lname,np.column_stack([samples1d,likelihood1d]),header='amp,width,numin,loglikelihood')
 
-#plot
-corner.corner(samples,weights=nf.exp(likelihood),bins=50,
-            labels=['Amplitude','Width',r'$\nu_{min}$'], truths=[1.0,14.0,16.4],
-            verbose=True, plot_datapoints=False, show_titles=True,
-            levels=[1-np.exp(-0.5),1-np.exp(-2)])
-# plt.suptitle(f'{lname.split("/")[-1]}')
-plt.show()
+# #plot
+# corner.corner(samples,weights=nf.exp(likelihood),bins=50,
+#             labels=['Amplitude','Width',r'$\nu_{min}$'], truths=[1.0,20.0,67.5],
+#             verbose=True, plot_datapoints=False, show_titles=True,
+#             levels=[1-np.exp(-0.5),1-np.exp(-2)])
+# # plt.suptitle(f'{lname.split("/")[-1]}')
+# plt.show()
 
 
-s,ll=nf.get_samplesAndLikelihood(args,plot='A')
-quantiles=corner.core.quantile(s[:,0],[0.05,0.5,0.95],weights=nf.exp(ll))
-for x in quantiles:
-    plt.axvline(40*x,c='k',alpha=0.5,lw=0.5)
-plt.axvline(40,color='k')
-plt.plot(40*s,nf.exp(ll))
-plt.xscale('log')
-# plt.xlim(10,2e3)
-plt.title(f'Amplitude 95% confidence: <{40*quantiles[-1]:.3f} mK')
-plt.show()
+# s,ll=nf.get_samplesAndLikelihood(args,plot='A')
+# quantiles=corner.core.quantile(s[:,0],[0.05,0.5,0.95],weights=nf.exp(ll))
+# for x in quantiles:
+#     plt.axvline(130*x,c='k',alpha=0.5,lw=0.5)
+# plt.axvline(130,color='k')
+# plt.plot(130*s,nf.exp(ll))
+# plt.xscale('log')
+# # plt.xlim(10,2e3)
+# plt.title(f'Amplitude 95% confidence: <{130*quantiles[-1]:.3f} mK')
+# plt.show()

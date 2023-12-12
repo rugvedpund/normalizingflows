@@ -19,6 +19,7 @@ parser.add_argument('--noPCA', action='store_true')
 
 parser.add_argument('--combineSigma', type=str, required=False, default='') #e.g. '4 6' separated by space
 
+parser.add_argument('--SNRpp', type=float, default=None, required=False)
 parser.add_argument('--noise', type=float, default=0.0, required=False)
 parser.add_argument('--noiseSeed', type=int, default=0, required=False)
 parser.add_argument('--subsampleSigma', type=float, default=2.0, required=False)

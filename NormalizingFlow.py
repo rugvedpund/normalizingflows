@@ -22,9 +22,10 @@ def exp(l,numpy=True):
 def T_CMB(freqs):
     return 2.725*np.ones_like(freqs)
 
-def T_DA(amp,width,nu_min,cmb=False):
+def T_DA(amp,width,nu_min,cmb=False,cosmicdawn=False):
     freqs=np.arange(1,51)
     if cmb: return amp*T_CMB(freqs)
+    if cosmicdawn: return amp*lusee.MonoSkyModels.T_CosmicDawn_Scaled(np.linspace(51,100),nu_rms=width,nu_min=nu_min)
     return amp*lusee.MonoSkyModels.T_DarkAges_Scaled(freqs,nu_rms=width,nu_min=nu_min)
 
 def get_amp_width_numin(npoints,amin=0,amax=3.0,wmin=10.0,wmax=20.0,nmin=10.0,nmax=20.0,logspace=False):
@@ -39,11 +40,11 @@ def uniform_grid(npoints,**kwargs):
     samples=np.vstack(list(map(np.ravel,g))).T
     return samples
 
-def get_t21vs(npoints,cmb=False,**kwargs):
+def get_t21vs(npoints,cmb=False,cosmicdawn=False,**kwargs):
     samples=uniform_grid(npoints,**kwargs)
     t21_vs=np.zeros((50,npoints**3))
     for i,(a,w,n) in enumerate(samples):
-        t21_vs[:,i]=T_DA(a,w,n,cmb=cmb)
+        t21_vs[:,i]=T_DA(a,w,n,cmb=cmb,cosmicdawn=cosmicdawn)
     return samples,t21_vs
 
 def uniform_grid2d(npoints,vs,**kwargs): #vs= WvA NvA WvN
@@ -63,11 +64,14 @@ def get_t21vs2d(npoints,vs,**kwargs):  #vs= WvA NvA WvN
         if vs=='WvN': t21_vs[:,i]=T_DA(amp=1.0,width=x,nu_min=y)
     return samples,t21_vs
 
-def get_t21vs1d(npoints,vs,cmb=False,**kwargs):
+def get_t21vs1d(npoints,vs,cmb=False,cosmicdawn=False,**kwargs):
     amp,width,nu_min=get_amp_width_numin(npoints,**kwargs)
     if vs=='A': 
         samples=amp
-        tDA=lambda xx:T_DA(amp=xx,width=14.0,nu_min=16.4,cmb=cmb)
+        if cosmicdawn: 
+            tDA=lambda xx:T_DA(amp=xx,width=20.0,nu_min=67.5,cmb=cmb,cosmicdawn=cosmicdawn)
+        else:
+            tDA=lambda xx:T_DA(amp=xx,width=14.0,nu_min=16.4,cmb=cmb)
     if vs=='W': 
         samples=width
         tDA=lambda xx:T_DA(amp=1.0,width=xx,nu_min=16.4)
@@ -83,8 +87,14 @@ def get_fname(args):
     """for saving model after training"""
     cS=','.join(args.combineSigma.split())
     pca=','.join(args.nPCA.split())
+    fgname=args.fgFITS.split('.')[0]
 
-    fname=f'{root}GIS_ulsa_nside128_sigma{args.sigma}_subsample{args.subsample_factor}_galcut{args.galcut}_noPCA{args.noPCA}_chromaticBeam{args.chromatic}_combineSigma{cS}_noise{args.noise}_seed{args.noiseSeed}_subsampleSigma{args.subsampleSigma}'
+    fname=f'{root}GIS_{fgname}_nside128_sigma{args.sigma}_subsample{args.subsample_factor}_galcut{args.galcut}_noPCA{args.noPCA}_chromaticBeam{args.chromatic}_combineSigma{cS}'
+    if args.SNRpp is not None: 
+        fname+=f'_SNRpp{args.SNRpp}'
+    else:
+        fname+=f'_noise{args.noise_K}'
+    fname+=f'_seed{args.noiseSeed}_subsampleSigma{args.subsampleSigma}'
     if args.gainFluctuationLevel is not None: fname+=f'_gainFluctuation{args.gainFluctuationLevel}_gFdebug{args.gFdebug}'
     if args.append: fname+=args.append
     if args.nPCA: fname+=f'_nPCA{pca}'
@@ -92,13 +102,8 @@ def get_fname(args):
 
 def get_lname(args,plot):
     """for saving likelihood results"""
-    cS=','.join(args.combineSigma.split())
-    pca=','.join(args.nPCA.split())
-    lname=f'{root}corner/GIS_ulsa_nside128_sigma{args.sigma}_subsample{args.subsample_factor}_galcut{args.galcut}_noPCA{args.noPCA}_chromaticBeam{args.chromatic}_combineSigma{cS}_noise{args.noise}_seed{args.noiseSeed}_subsampleSigma{args.subsampleSigma}'
-    if args.nPCA: lname+=f'_nPCA{pca}'
-    if args.gainFluctuationLevel is not None: lname+=f'_gainFluctuation{args.gainFluctuationLevel}_gFdebug{args.gFdebug}'
-    if args.append: lname+=args.append
-    if args.appendLik: lname+=args.appendLik
+    lname=get_fname(args)
+    if args.appendLik: lname+=f'like{args.appendLik}'
 
     lname+=f'_noisyT21{args.noisyT21}_vs{plot}_DAfactor{args.DA_factor}_freqFluctuationLevel{args.freqFluctuationLevel}'
     return lname
