@@ -22,10 +22,9 @@ def exp(l,numpy=True):
 def T_CMB(freqs):
     return 2.725*np.ones_like(freqs)
 
-def T_DA(amp,width,nu_min,cmb=False,cosmicdawn=False):
-    freqs=np.arange(1,51)
+def T_DA(freqs,amp,width,nu_min,cmb=False,cosmicdawn=False):
     if cmb: return amp*T_CMB(freqs)
-    if cosmicdawn: return amp*lusee.MonoSkyModels.T_CosmicDawn_Scaled(np.linspace(51,100),nu_rms=width,nu_min=nu_min)
+    if cosmicdawn: return amp*lusee.MonoSkyModels.T_CosmicDawn_Scaled(freqs,nu_rms=width,nu_min=nu_min)
     return amp*lusee.MonoSkyModels.T_DarkAges_Scaled(freqs,nu_rms=width,nu_min=nu_min)
 
 def get_amp_width_numin(npoints,amin=0,amax=3.0,wmin=10.0,wmax=20.0,nmin=10.0,nmax=20.0,logspace=False):
@@ -40,11 +39,11 @@ def uniform_grid(npoints,**kwargs):
     samples=np.vstack(list(map(np.ravel,g))).T
     return samples
 
-def get_t21vs(npoints,cmb=False,cosmicdawn=False,**kwargs):
+def get_t21vs(freqs,npoints,cmb=False,cosmicdawn=False,**kwargs):
     samples=uniform_grid(npoints,**kwargs)
-    t21_vs=np.zeros((50,npoints**3))
+    t21_vs=np.zeros((len(freqs),npoints**3))
     for i,(a,w,n) in enumerate(samples):
-        t21_vs[:,i]=T_DA(a,w,n,cmb=cmb,cosmicdawn=cosmicdawn)
+        t21_vs[:,i]=T_DA(freqs,a,w,n,cmb=cmb,cosmicdawn=cosmicdawn)
     return samples,t21_vs
 
 def uniform_grid2d(npoints,vs,**kwargs): #vs= WvA NvA WvN
@@ -64,21 +63,21 @@ def get_t21vs2d(npoints,vs,**kwargs):  #vs= WvA NvA WvN
         if vs=='WvN': t21_vs[:,i]=T_DA(amp=1.0,width=x,nu_min=y)
     return samples,t21_vs
 
-def get_t21vs1d(npoints,vs,cmb=False,cosmicdawn=False,**kwargs):
+def get_t21vs1d(freqs,npoints,vs,cmb=False,cosmicdawn=False,**kwargs):
     amp,width,nu_min=get_amp_width_numin(npoints,**kwargs)
     if vs=='A': 
         samples=amp
         if cosmicdawn: 
-            tDA=lambda xx:T_DA(amp=xx,width=20.0,nu_min=67.5,cmb=cmb,cosmicdawn=cosmicdawn)
+            tDA=lambda xx:T_DA(freqs,amp=xx,width=20.0,nu_min=67.5,cmb=cmb,cosmicdawn=cosmicdawn)
         else:
-            tDA=lambda xx:T_DA(amp=xx,width=14.0,nu_min=16.4,cmb=cmb)
+            tDA=lambda xx:T_DA(freqs,amp=xx,width=14.0,nu_min=16.4,cmb=cmb)
     if vs=='W': 
         samples=width
         tDA=lambda xx:T_DA(amp=1.0,width=xx,nu_min=16.4)
     if vs=='N': 
         samples=nu_min
         tDA=lambda xx:T_DA(amp=1.0,width=14.0,nu_min=xx)
-    t21_vs=np.zeros((50,npoints))
+    t21_vs=np.zeros((len(freqs),npoints))
     for i,xx in enumerate(samples):
         t21_vs[:,i]=tDA(xx)
     return samples,t21_vs
@@ -87,6 +86,7 @@ def get_fname(args):
     """for saving model after training"""
     cS=','.join(args.combineSigma.split())
     pca=','.join(args.nPCA.split())
+    fqs=','.join(args.freqs.split())
     fgname=args.fgFITS.split('.')[0]
 
     fname=f'{root}GIS_{fgname}_nside128_sigma{args.sigma}_subsample{args.subsample_factor}_galcut{args.galcut}_noPCA{args.noPCA}_chromaticBeam{args.chromatic}_combineSigma{cS}'
@@ -98,6 +98,7 @@ def get_fname(args):
     if args.gainFluctuationLevel is not None: fname+=f'_gainFluctuation{args.gainFluctuationLevel}_gFdebug{args.gFdebug}'
     if args.append: fname+=args.append
     if args.nPCA: fname+=f'_nPCA{pca}'
+    fname+=f'_freqs{fqs}'
     return fname
 
 def get_lname(args,plot):
@@ -204,6 +205,7 @@ class FlowAnalyzerV2(NormalizingFlow):
         diffCombineSigma: bool, whether to do fg_cS[sigma]-fg_cS[sigma-1]
         avgAdjacentFreqBins: bool, whether to combine adjacent freq bins
         fgFITS: foreground map of shape (nfreq,npix)
+        freqs: start and end freqs separated by space
         """
 
         self.sigma=args.sigma
@@ -218,13 +220,19 @@ class FlowAnalyzerV2(NormalizingFlow):
         self.gFdebug=args.gFdebug
         self.diffCombineSigma=args.diffCombineSigma
         self.avgAdjacentFreqBins=args.avgAdjacentFreqBins
+        self.fmin,self.fmax=[int(f) for f in args.freqs.split()]
+        self.freqs=np.arange(self.fmin,self.fmax)
 
         print(f'loading foreground map {args.fgFITS}')
         self.fg=fitsio.read(f'{root}{args.fgFITS}')
 
         #fg 
         self.nfreq,self.npix=self.fg.shape
-
+        if self.nfreq!=len(self.freqs):
+            print('fg shape and given freqs do not match')
+            self.fg=self.fg[-len(self.freqs):,:]
+            self.nfreq=len(self.freqs)
+            print('new fg shape is:',self.fg.shape)
         # self.fg=np.random.rand(self.nfreq,self.npix)
         np.random.seed(self.noiseSeed)
         #generate noise
@@ -381,10 +389,9 @@ class FlowAnalyzerV2(NormalizingFlow):
     def smooth(self,fg,sigma,chromatic):
         print(f'smoothing with {sigma} deg, and chromatic {chromatic}')
         fgsmooth=np.zeros_like(fg)
-        nfreq,ndata=fg.shape
-        for f in range(nfreq):
-            sigma_f=sigma*(10.0/(f+1)) if chromatic else sigma
-            fgsmooth[f,:]=hp.sphtfunc.smoothing(fg[f,:],sigma=np.deg2rad(sigma_f))
+        for fi,f in enumerate(self.freqs):
+            sigma_f=sigma*(10.0/(f)) if chromatic else sigma
+            fgsmooth[fi,:]=hp.sphtfunc.smoothing(fg[fi,:],sigma=np.deg2rad(sigma_f))
         return fgsmooth
     
     def galaxy_cut(self,fg,b_min):
@@ -410,7 +417,7 @@ class FlowAnalyzerV2(NormalizingFlow):
         return fg_subsample
         
     def get_likelihood(self,t21_vsdata,freqFluctuationLevel,DA_factor=1.0, debugfF=False,end=None):
-        freqs=np.tile(np.arange(1,51),self.nsigmas)
+        freqs=np.tile(self.freqs,self.nsigmas)
         flowt21data_fF=self.t21data if debugfF else (1+freqFluctuationLevel*np.cos(6*np.pi/50*freqs))*self.t21data
         l=(self.fgmeansdata[:,None]+DA_factor*flowt21data_fF[:,None]-t21_vsdata).T
         return self._likelihood(l,end).cpu().numpy()
@@ -462,7 +469,8 @@ class Args:
         avgAdjacentFreqBins=False,
         retrain=False,
         appendLik='',
-        fgFITS='ulsa.fits'
+        fgFITS='ulsa.fits',
+        freqs='1 50'
         ):
 
         self.sigma=sigma
@@ -488,6 +496,7 @@ class Args:
         self.retrain=retrain
         self.appendLik=appendLik
         self.fgFITS=fgFITS
+        self.freqs=freqs
     def print(self):
         for arg in vars(self):
             print(arg, getattr(self, arg))
