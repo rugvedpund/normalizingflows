@@ -13,6 +13,25 @@ import corner
 
 root=os.environ['NF_WORKDIR'] #specify path to save/load models and likelihood results
 
+def plot_corner(args):
+    """plot corner plots for all parameters"""
+    samples,likelihood=get_samplesAndLikelihood(args,'all')
+    if args.fgFITS=='ulsa.fits':
+        amp=40.0
+        truths=[amp,14.0,16.4]
+    if args.fgFITS=='gsm16.fits':
+        amp=130.0
+        truths=[amp,14.0,16.4]
+    samples[:,0]*=amp
+    fig=corner.corner(samples,weights=exp(likelihood),labels=[r'$A$',r'$\nu_{\rm rms}$',r'$\nu_{\rm min}$'],
+                      plot_datapoints=False,
+                      truths=truths,truth_color='gray',
+                      levels=[1-np.exp(-0.5),1-np.exp(-2)],
+                      bins=50,
+                      show_titles=True,
+                      hist_kwargs={'density':True})
+    return fig
+
 def exp(l,numpy=True):
     if numpy: 
         return np.exp((l-max(l)))
@@ -91,7 +110,7 @@ def get_fname(args):
 
     fname=f'{root}GIS_{fgname}_nside128_sigma{args.sigma}_subsample{args.subsample_factor}_galcut{args.galcut}_noPCA{args.noPCA}_chromaticBeam{args.chromatic}_combineSigma{cS}'
     if args.SNRpp is not None: 
-        fname+=f'_SNRpp{args.SNRpp}'
+        fname+=f'_SNRpp{args.SNRpp:.0e}'
     else:
         fname+=f'_noise{args.noise_K}'
     fname+=f'_seed{args.noiseSeed}_subsampleSigma{args.subsampleSigma}'
@@ -230,6 +249,7 @@ class FlowAnalyzerV2(NormalizingFlow):
         self.nfreq,self.npix=self.fg.shape
         if self.nfreq!=len(self.freqs):
             print('fg shape and given freqs do not match')
+            print('cropping fg to match freqs')
             self.fg=self.fg[-len(self.freqs):,:]
             self.nfreq=len(self.freqs)
             print('new fg shape is:',self.fg.shape)
@@ -237,11 +257,13 @@ class FlowAnalyzerV2(NormalizingFlow):
         np.random.seed(self.noiseSeed)
         #generate noise
         if self.SNRpp is not None:
-            print(f'generating radiometer noise with SNRpp={self.SNRpp}')
+            print(f'generating radiometer noise with SNRpp={self.SNRpp:.0e}')
             self.noise=self.generate_radiometer_noise(self.fg.copy(),self.SNRpp,self.subsampleSigma)
         else:
             print(f'generating noise with noise_K={self.noise_K}')
             self.noise=self.generate_noise(self.fg.copy(),self.noise_K,self.subsampleSigma)
+
+        #do combineSigma
         sigmas=[self.sigma]+self.combineSigma
         print('doing sigmas', sigmas)
         self.nsigmas=len(sigmas)
@@ -338,7 +360,7 @@ class FlowAnalyzerV2(NormalizingFlow):
             t21=(t21[::2]+t21[1::2])/2
         if self.diffCombineSigma:
             self.t21=np.zeros(self.nfreq*self.nsigmas)
-            self.t21[:50]=t21.copy()
+            self.t21[:self.nfreq]=t21.copy()
         else:
             self.t21=np.tile(t21,self.nsigmas)
         self.pt21=self.eve.T@self.t21

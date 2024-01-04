@@ -55,6 +55,7 @@ for arg in vars(args):
 ###-------------------------------------------------------------------------------------------------###
 
 fname=nf.get_fname(args)
+print(f'loading flow from {fname}')
 flow=nf.FlowAnalyzerV2(nocuda=False,loadPath=fname)
 flow.set_fg(args)
 
