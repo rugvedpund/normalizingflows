@@ -47,9 +47,18 @@ def T_DA(freqs,amp,width,nu_min,cmb=False,cosmicdawn=False):
     return amp*lusee.MonoSkyModels.T_DarkAges_Scaled(freqs,nu_rms=width,nu_min=nu_min)
 
 def get_amp_width_numin(npoints,amin=0,amax=3.0,wmin=10.0,wmax=20.0,nmin=10.0,nmax=20.0,logspace=False):
-    amp=np.logspace(np.log10(amin),np.log10(amax),num=npoints) if logspace else np.linspace(amin,amax,num=npoints) #default is 1.0
-    width=np.linspace(wmin,wmax,num=npoints) #default is 14 MHz
-    nu_min=np.linspace(nmin,nmax, num=npoints) #default is 16.4 MHz
+    if logspace:
+        amp=np.logspace(np.log10(amin),np.log10(amax),num=npoints)
+        width=np.logspace(np.log10(wmin),np.log10(wmax),num=npoints)
+        nu_min=np.logspace(np.log10(nmin),np.log10(nmax),num=npoints)
+    else:
+        amp=np.linspace(amin,amax,num=npoints)
+        width=np.linspace(wmin,wmax,num=npoints)
+        nu_min=np.linspace(nmin,nmax, num=npoints)
+
+    # amp=np.logspace(np.log10(amin),np.log10(amax),num=npoints) if logspace else np.linspace(amin,amax,num=npoints) #default is 1.0
+    # width=np.linspace(wmin,wmax,num=npoints) #default is 14 MHz
+    # nu_min=np.linspace(nmin,nmax, num=npoints) #default is 16.4 MHz
     return amp,width,nu_min
 
 def uniform_grid(npoints,**kwargs):
@@ -92,10 +101,16 @@ def get_t21vs1d(freqs,npoints,vs,cmb=False,cosmicdawn=False,**kwargs):
             tDA=lambda xx:T_DA(freqs,amp=xx,width=14.0,nu_min=16.4,cmb=cmb)
     if vs=='W': 
         samples=width
-        tDA=lambda xx:T_DA(amp=1.0,width=xx,nu_min=16.4)
+        if cosmicdawn: 
+            tDA=lambda xx:T_DA(freqs,amp=1.0,width=xx,nu_min=67.5,cmb=cmb,cosmicdawn=cosmicdawn)
+        else:
+            tDA=lambda xx:T_DA(freqs,amp=1.0,width=xx,nu_min=16.4,cmb=cmb)
     if vs=='N': 
         samples=nu_min
-        tDA=lambda xx:T_DA(amp=1.0,width=14.0,nu_min=xx)
+        if cosmicdawn: 
+            tDA=lambda xx:T_DA(freqs,amp=1.0,width=20.0,nu_min=xx,cmb=cmb,cosmicdawn=cosmicdawn)
+        else:
+            tDA=lambda xx:T_DA(freqs,amp=1.0,width=14.0,nu_min=xx,cmb=cmb)
     t21_vs=np.zeros((len(freqs),npoints))
     for i,xx in enumerate(samples):
         t21_vs[:,i]=tDA(xx)
@@ -492,7 +507,7 @@ class Args:
         retrain=False,
         appendLik='',
         fgFITS='ulsa.fits',
-        freqs='1 50'
+        freqs='1 51'
         ):
 
         self.sigma=sigma
