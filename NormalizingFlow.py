@@ -116,7 +116,7 @@ def get_t21vs1d(freqs,npoints,vs,cmb=False,cosmicdawn=False,**kwargs):
         t21_vs[:,i]=tDA(xx)
     return samples,t21_vs
 
-def get_fname(args):
+def get_fname(args,old=False):
     """for saving model after training"""
     cS=','.join(args.combineSigma.split())
     pca=','.join(args.nPCA.split())
@@ -127,24 +127,28 @@ def get_fname(args):
     if args.SNRpp is not None: 
         fname+=f'_SNRpp{args.SNRpp:.0e}'
     else:
-        fname+=f'_noise{args.noise_K}'
+        fname+=f'_noise{args.noise}'
     fname+=f'_seed{args.noiseSeed}_subsampleSigma{args.subsampleSigma}'
     if args.gainFluctuationLevel is not None: fname+=f'_gainFluctuation{args.gainFluctuationLevel}_gFdebug{args.gFdebug}'
     if args.append: fname+=args.append
     if args.nPCA: fname+=f'_nPCA{pca}'
-    fname+=f'_freqs{fqs}'
+    if not old: fname+=f'_freqs{fqs}'
     return fname
 
-def get_lname(args,plot):
+def get_lname(args,plot,old=False):
     """for saving likelihood results"""
-    lname=get_fname(args)
+    lname=get_fname(args,old)
     if args.appendLik: lname+=f'like{args.appendLik}'
 
     lname+=f'_noisyT21{args.noisyT21}_vs{plot}_DAfactor{args.DA_factor}_freqFluctuationLevel{args.freqFluctuationLevel}'
+    if old: 
+        paths=lname.split('/')
+        paths.insert(6,'corner')
+        lname='/'.join(paths)
     return lname
 
-def get_samplesAndLikelihood(args,plot,verbose=False):
-    lname=get_lname(args,plot)
+def get_samplesAndLikelihood(args,plot,verbose=False,old=False):
+    lname=get_lname(args,plot,old)
     if verbose: print(f'loading corner likelihood results from {lname}')
     f=np.loadtxt(lname,unpack=True)
     likelihood=f[-1]
@@ -493,6 +497,7 @@ class Args:
         SNRpp=None,
         noise=0.0,
         noiseSeed=0,
+        torchSeed=0,
         subsampleSigma=2.0,
         noisyT21=True,
         gainFluctuationLevel=0.0,
@@ -519,6 +524,7 @@ class Args:
         self.SNRpp=SNRpp
         self.noise=noise
         self.noiseSeed=noiseSeed
+        self.torchSeed=torchSeed
         self.subsampleSigma=subsampleSigma
         self.noisyT21=noisyT21
         self.gainFluctuationLevel=gainFluctuationLevel

@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 import fitsio
 import NormalizingFlow as nf
 import lusee
@@ -23,6 +24,7 @@ parser.add_argument('--combineSigma', type=str, required=False, default='') #e.g
 parser.add_argument('--SNRpp', type=float, default=None, required=False)
 parser.add_argument('--noise', type=float, default=0.0, required=False)
 parser.add_argument('--noiseSeed', type=int, default=0, required=False)
+parser.add_argument('--torchSeed', type=int, default=0, required=False)
 parser.add_argument('--subsampleSigma', type=float, default=2.0, required=False)
 
 parser.add_argument('--noisyT21', action='store_true')
@@ -57,6 +59,17 @@ for arg in vars(args):
     else: print(arg, getattr(args, arg))
     
 ###-------------------------------------------------------------------------------------------------###
+
+#set seed
+print('setting noise and torch seeds...')
+np.random.seed(args.noiseSeed)
+torch.manual_seed(args.torchSeed)
+torch.cuda.manual_seed_all(args.torchSeed)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+device = torch.device('cuda')
+torch.set_default_tensor_type('torch.cuda.FloatTensor')
+
 
 fname=nf.get_fname(args)
 print(f'loading flow from {fname}')
@@ -106,9 +119,10 @@ if quantiles[0]<0.01:
     print('skipping 3D corner plot')
     exit()
 
-kwargs3D={'amin':max(2*quantiles[1]-quantiles[-1],0.01),'amax':quantiles[-1]}
+truths=[1.0,20.0,67.5] if cosmicdawn else [1.0,14.0,16.4]
+
 print('getting 1D limits on width and numin...')
-for vs in ['W','N']:
+for ivs,vs in enumerate(['W','N']):
     samples1d,t21_vs1d=nf.get_t21vs1d(flow.freqs,npoints=2000,vs=vs,cosmicdawn=cosmicdawn,**kwargs)
     t21_vsdata1d=flow.proj_t21(t21_vs1d,include_noise=True)
     likelihood1d=flow.get_likelihood(t21_vsdata1d, args.freqFluctuationLevel, args.DA_factor)
@@ -116,11 +130,13 @@ for vs in ['W','N']:
     print(f'saving 1d likelihood to {lname}')
     np.savetxt(lname,np.column_stack([samples1d,likelihood1d]),header='amp,width,numin,loglikelihood')
 
+kwargs3D={}
+for ivs,vs in enumerate(['A','W','N']):
     s,ll=nf.get_samplesAndLikelihood(args,plot=vs)
     quantiles=corner.core.quantile(s[:,0],limits,weights=nf.exp(ll))
     print('quantiles:',quantiles)
-    kwargs3D[vs.lower()+'min']=max(2*quantiles[1]-quantiles[-1],0.01)
-    kwargs3D[vs.lower()+'max']=quantiles[-1]
+    kwargs3D[vs.lower()+'min']=max(truths[ivs] - 2*(quantiles[-1]-truths[ivs]),0.01)
+    kwargs3D[vs.lower()+'max']=truths[ivs] + 2*(quantiles[-1] - truths[ivs])
 
     # #plot
     # for x in quantiles:
@@ -143,10 +159,10 @@ lname=nf.get_lname(args,plot='all')
 print(f'saving corner likelihood results to {lname}')
 np.savetxt(lname,np.column_stack([samples,likelihood]),header='amp,width,numin,loglikelihood')
 
-# #plot
-# corner.corner(samples,weights=nf.exp(likelihood),bins=30,
-#             labels=['Amplitude','Width',r'$\nu_{min}$'], truths=[1.0,20.0,67.5] if cosmicdawn else [1.0,14.0,16.4],
-#             verbose=True, plot_datapoints=False, show_titles=True,
-#             levels=[1-np.exp(-0.5),1-np.exp(-2)])
-# # plt.suptitle(f'{lname.split("/")[-1]}')
-# plt.show()
+#plot
+corner.corner(samples,weights=nf.exp(likelihood),bins=30,
+            labels=['Amplitude','Width',r'$\nu_{min}$'], truths=[1.0,20.0,67.5] if cosmicdawn else [1.0,14.0,16.4],
+            verbose=True, plot_datapoints=False, show_titles=True,
+            levels=[1-np.exp(-0.5),1-np.exp(-2)])
+# plt.suptitle(f'{lname.split("/")[-1]}')
+plt.show()

@@ -7,10 +7,42 @@ import pandas as pd
 import corner
 
 # %%
+
+
+def plot3D(args,old=False):
+    cosmicdawn=args.fgFITS=='ulsa.fits'
+    truths=[1,14,16.4] if cosmicdawn else [1,20,67.5]
+    s,ll=nf.get_samplesAndLikelihood(args,plot='all',old=old)
+    binsize=np.cbrt(len(s))
+    fig=corner.corner(s,weights=nf.exp(ll),
+                    labels=[r'$A$',r'$\nu_{\rm rms}$',r'$\nu_{\rm min}$'],
+                    bins=binsize,hist_kwargs={'density':True},
+                    plot_datapoints=False,levels=(1-np.exp(-0.5),1-np.exp(-2)),
+                    show_titles=True)
+    corner.overplot_lines(fig,truths,color='k',ls='--',lw=1)
+
+def plot3x1D(args,old=False):
+    cosmicdawn=args.fgFITS=='ulsa.fits'
+    truths=[1,14,16.4] if cosmicdawn else [1,20,67.5]
+    limits=[0.001,0.5,0.9999]
+    fig,ax=plt.subplots(1,3,figsize=(10,4))
+    for ivs,vs in enumerate( ['A','W','N'] ):
+        s,ll=nf.get_samplesAndLikelihood(args,plot=vs,old=old)
+        ax[ivs].plot(s[:,0],nf.exp(ll))
+        ax[ivs].set_xscale('log')
+        ax[ivs].axvline(truths[ivs],c='k',ls='--',label='Truth')
+        quantiles=corner.core.quantile(s[:,0],limits,weights=nf.exp(ll))
+        for q in quantiles:
+            ax[ivs].axvline(q,c='k',alpha=0.5,lw=0.5)
+        ax[ivs].set_title(f'{vs} \n [{quantiles[0]:.2f},{quantiles[1]:.2f},{quantiles[-1]:.2f}]')
+    return fig,ax
+
+# %%
 args=nf.Args()
 args.SNRpp=1e24
 args.fgFITS='gsm16.fits'
 args.freqs='51 101'
+args.chromatic=False
 cd=nf.FlowAnalyzerV2(nf.get_fname(args))
 cd.set_fg(args)
 cdt21=lusee.MonoSkyModels.T_CosmicDawn_Scaled(cd.freqs,nu_rms=20,nu_min=67.5,A=0.130)
@@ -156,12 +188,13 @@ plt.grid()
 # %%
 
 args=nf.Args()
-args.fgFITS, args.freqs, args.chromatic ='gsm16.fits', '51 101', 'True'
+args.fgFITS, args.freqs, args.chromatic ='gsm16.fits', '51 101', True
+# args.fgFITS, args.freqs, args.chromatic ='ulsa.fits', '1 51', True
 
 # snrpps=[1e4,1e5,1e6]
-# snrpps=[1e5,1e6,1e7]
+snrpps=[1e5,1e6,1e7]
 # snrpps=[1e7,1e8,1e9]
-snrpps=[1e8,1e9,1e10]
+# snrpps=[1e8,1e9,1e10]
 # snrpps=[1e9,1e10,1e11]
 
 seeds=[0,1,2,3,4,5,6,7,8,9]
@@ -170,8 +203,8 @@ colors={'':'dimgray','4':'C2','4 6':'C3'}
 lstyles=[':','-.','-']
 labels={'':r'$2^\circ$','4':r'$2^\circ+4^\circ$',
         '4 6':r'$2^\circ+4^\circ+6^\circ$'}
-alphas={'':0.15,'4':0.2,'4 6':0.3}
-chromatic='Chromatic' if args.chromatic=='True' else 'Achromatic'
+alphas={'':0.05,'4':0.1,'4 6':0.3}
+chromatic='Chromatic' if args.chromatic else 'Achromatic'
 fg='Dark Ages' if args.fgFITS=='ulsa.fits' else 'Cosmic Dawn'
 afactor=40 if args.fgFITS=='ulsa.fits' else 130
 
@@ -207,7 +240,7 @@ for snrpp in snrpps:
 
 #clean legend and axes
 for snrpp in snrpps:
-   plt.plot([],[],c='k',ls=lstyles[snrpps.index(snrpp)],label=rf'SNRpp={snrpp:.0e}')
+   plt.plot([],[],c='k',ls=lstyles[snrpps.index(snrpp)],label=rf'SNR={snrpp:.0e}')
 for cs in combineSigmas:
     plt.plot([],[],c=colors[cs],label=labels[cs])
 plt.axvline(afactor,color='k',ls='--',label='Truth')
@@ -218,13 +251,52 @@ plt.xlim(0.5,4e3)
 plt.xscale('log')
 plt.title(f'{fg} Signal Amplitude Likelihood - {chromatic} Beam')
 plt.legend()
+# plt.savefig(f'plots/{fg}_{chromatic}_likelihood.pdf',dpi=300,bbox_inches='tight')
 
 # %%
 
+# simple 3D plot
+
 args=nf.Args()
-# args.fgFITS, args.freqs, args.chromatic ='ulsa.fits', '1 51', 'False'
-args.fgFITS, args.freqs, args.chromatic ='gsm16.fits', '51 101', 'False'
-args.SNRpp=1e5
+args.fgFITS, args.freqs, args.chromatic ='ulsa.fits', '1 51', 'False'
+# args.fgFITS, args.freqs, args.chromatic ='gsm16.fits', '51 101', 'False'
+# args.SNRpp=1e24
+args.noise, args.append = 0.0, '_whynoradio'
+args.combineSigma='4 6'
+args.noiseSeed=2
+
+truths=[1,14,16.4] if args.fgFITS=='ulsa.fits' else [1,20,67.5]
+binsize=30
+fg='Dark Ages' if args.fgFITS=='ulsa.fits' else 'Cosmic Dawn'
+
+# for ivs,vs in enumerate( ['A','W','N'] ):
+#     plt.figure(figsize=(10,5))
+#     plt.subplot(1,3,ivs+1)
+#     s,ll=nf.get_samplesAndLikelihood(args,plot=vs)
+#     s[:,0]*=truths[0] if vs=='A' else 1
+#     plt.plot(s[:,0],nf.exp(ll))
+#     plt.xscale('log')
+#     plt.title(f'{fg} Signal Constraints for SNRpp={args.SNRpp:.0e}')
+# plt.show()
+
+
+
+s,ll=nf.get_samplesAndLikelihood(args,plot='all')
+fig=corner.corner(s,weights=nf.exp(ll),
+                labels=[r'$A$',r'$\nu_{\rm rms}$',r'$\nu_{\rm min}$'],
+                bins=binsize,hist_kwargs={'density':True},
+                plot_datapoints=False,levels=(1-np.exp(-0.5),1-np.exp(-2)))
+corner.overplot_lines(fig,truths,color='k',ls='--',lw=1)
+
+
+# %%
+
+# combineSigmas 3D plot
+
+args=nf.Args()
+# args.fgFITS, args.freqs, args.chromatic ='ulsa.fits', '1 51', False
+args.fgFITS, args.freqs, args.chromatic ='gsm16.fits', '51 101', False
+args.SNRpp=1e6
 
 colors={'':'gray','4':'C2','4 6':'C3'}
 truths=[40,14,16.4] if args.fgFITS=='ulsa.fits' else [130,20,67.5]
@@ -262,16 +334,18 @@ plt.plot([],[],c='k',ls='--',label='Truth')
 for cs in ['','4','4 6']:
     plt.plot([],[],c=colors[cs],label=labels[cs],lw=5)
 plt.legend(bbox_to_anchor=(0,2.5),loc='center left',borderaxespad=0)
-plt.suptitle(f'{fg} Signal Constraints for SNRpp={args.SNRpp:.0e}')
+plt.suptitle(f'{fg} Signal Constraints for SNR={args.SNRpp:.0e}')
+plt.savefig(f'plots/{fg}_combineSigmas.pdf',dpi=300,bbox_inches='tight')
 
 
 # %%
 
+# chromatic vs achromatic 3D plot
 
 args=nf.Args()
 args.fgFITS, args.freqs ='ulsa.fits', '1 51'
 # args.fgFITS, args.freqs ='gsm16.fits', '51 101'
-args.SNRpp=1e12
+args.SNRpp=1e24
 args.combineSigma=''
 
 colors={'True':'darkgray','False':'C3'}
@@ -301,7 +375,7 @@ corner.overplot_lines(fig,truths,color='k',ls='--',lw=1)
 for cs in ['True','False']:
     plt.plot([],[],c=colors[cs],label=labels[cs],lw=5)
 plt.legend(bbox_to_anchor=(0,2.5),loc='center left',borderaxespad=0)
-plt.suptitle(f'{fg} Signal Constraints for SNRpp={args.SNRpp:.0e}')
+plt.suptitle(f'{fg} Signal Constraints for SNR{args.SNRpp:.0e}')
 
 # %%
 
@@ -310,7 +384,7 @@ args.fgFITS, args.freqs ='ulsa.fits', '1 51'
 # args.fgFITS, args.freqs ='gsm16.fits', '51 101'
 args.combineSigma=''
 args.noiseSeed=0
-args.chromatic='True'
+args.chromatic=True
 
 truths=[40,14,16.4] if args.fgFITS=='ulsa.fits' else [130,20,67.5]
 labels={'amp':r'$A$', 'width':r'$\nu_{\rm rms}$', 'numin':r'$\nu_{\rm min}$'}
@@ -327,20 +401,22 @@ snrpplabels={1e4:r'$10^4$',1e5:r'$10^5$',1e6:r'$10^6$',1e7:r'$10^7$',
                 1e12:r'$10^{12}$',1e13:r'$10^{13}$',1e24:r'$10^{24}$'}
 #for noisy
 for snrpp in snrpps:
-    args.SNRpp=snrpp
-    try:
-        s,ll=nf.get_samplesAndLikelihood(args,plot='all')
-    except FileNotFoundError:
-        print('not found, continuing')
-        continue
-    constraints=nf.get_constraints(s,ll)
-    constraints['amp']*=truths[0]
-    constraints['amp+']*=truths[0]
-    constraints['amp-']*=truths[0]
-    for i,p in enumerate(['amp','width','numin']):
-        ax[i].errorbar(constraints[p],args.SNRpp,
-                    xerr=[[constraints[p+'-']],[constraints[p+'+']]],
-                    fmt='o',capsize=5,c='C'+str(i))
+    for ics,cs in enumerate( ['','4','4 6'] ):
+        args.SNRpp=snrpp
+        args.combineSigma=cs
+        try:
+            s,ll=nf.get_samplesAndLikelihood(args,plot='all')
+        except FileNotFoundError:
+            print('not found, continuing')
+            continue
+        constraints=nf.get_constraints(s,ll)
+        constraints['amp']*=truths[0]
+        constraints['amp+']*=truths[0]
+        constraints['amp-']*=truths[0]
+        for i,p in enumerate(['amp','width','numin']):
+            ax[i].errorbar(constraints[p],args.SNRpp,
+                        xerr=[[constraints[p+'-']],[constraints[p+'+']]],
+                        fmt='o',capsize=5,c='C'+str(ics))
 
 #for noiseless
 args.SNRpp=1e24
@@ -350,13 +426,14 @@ constraints['amp']*=truths[0]
 constraints['amp+']*=truths[0]
 constraints['amp-']*=truths[0]
 for i,p in enumerate(['amp','width','numin']):
-    ax[i].axhline(snrpps[-1]*1e2,c='k',alpha=0.1)
-    ax[i].errorbar(constraints[p],snrpps[-1]*1e2,
-                   xerr=[[constraints[p+'-']],[constraints[p+'+']]],
-                fmt='o',capsize=5,c='C'+str(i))
-    ax[i].set_yscale('log')
-    ax[i].axvline(truths[i],c='gray',ls='--',label='Truth')
-    ax[i].set_xlabel(labels[p])
+    for ics,cs in enumerate( ['','4','4 6'] ):
+        ax[i].axhline(snrpps[-1]*1e2,c='k',alpha=0.1)
+        ax[i].errorbar(constraints[p],snrpps[-1]*1e2,
+                    xerr=[[constraints[p+'-']],[constraints[p+'+']]],
+                    fmt='o',capsize=5,c='C'+str(ics))
+        ax[i].set_yscale('log')
+        ax[i].axvline(truths[i],c='gray',ls='--',label='Truth')
+        ax[i].set_xlabel(labels[p])
 
 ax[0].set_yticks(snrpps+[snrpps[-1]*1e2],
                  labels=[snrpplabels[snrpp] for snrpp in snrpps]+['Noiseless'],
@@ -365,6 +442,65 @@ ax[0].set_yticks(snrpps+[snrpps[-1]*1e2],
 ax[0].set_ylabel(r'SNR$_{\rm pp}$')
 ax[1].get_yaxis().set_visible(False)
 ax[2].get_yaxis().set_visible(False)
-fig.suptitle(f'{fg} Signal Constraints for \n {combineSigmalabels[args.combineSigma]} {chromatic} Beam')
+fig.suptitle(f'{fg} Signal Constraints for {chromatic} Beams')
 
+# %%
+
+# explore galcut
+
+args=nf.Args()
+args.fgFITS, args.freqs, args.chromatic = 'ulsa.fits', '1 51', False
+# args.fgFITS, args.freqs ='gsm16.fits', '51 101', False
+
+args.SNRpp=1e12
+args.combineSigma='4 6'
+args.noiseSeed=1
+args.galcut=40.0
+
+plot3x1D(args)
+print(f'{fg} SNRpp {args.SNRpp:.0e},combineSigma {args.combineSigma},galcut {args.galcut} deg,noiseSeed {args.noiseSeed}')
+plot3D(args)
+
+# %%
+
+# explore zero noise
+
+args=nf.Args()
+args.fgFITS, args.freqs, args.chromatic = 'ulsa.fits', '1 51', False
+# args.fgFITS, args.freqs ='gsm16.fits', '51 101', False
+args.SNRpp=1e24
+# args.noise, args.append, old = 0.0000, '_t21zeros', True
+# args.noise, old = 0.0, False
+args.combineSigma='4 6'
+args.noiseSeed=1
+# args.torchSeed=1
+
+# plot3x1D(args,old=old)
+fg='Dark Ages' if args.fgFITS=='ulsa.fits' else 'Cosmic Dawn'
+noise = f'SNRpp {args.SNRpp:.0e}' if args.SNRpp is not None else f'noise {args.noise:.0e}'
+print(f'{fg} {noise},combineSigma {args.combineSigma},noiseSeed {args.noiseSeed}')
+plot3D(args,old=old)
+# %%
+
+# explore galcut
+
+args=nf.Args()
+args.fgFITS, args.freqs, args.chromatic = 'ulsa.fits', '1 51', False
+# args.fgFITS, args.freqs ='gsm16.fits', '51 101', False
+args.noiseSeed=1
+
+fig,ax=plt.subplots(1,3,figsize=(15,6))
+for ics,cs in enumerate( ['','4','4 6'] ):
+    for gc in [0.1,10.0,20.0,30.0,40.0]:
+        args.SNRpp=1e12
+        args.combineSigma=cs
+        args.galcut=gc
+        s,ll=nf.get_samplesAndLikelihood(args,plot='A')
+        ax[ics].plot(s[:,0],nf.exp(ll),label=f'{gc:.1f} deg')
+        # ax[ics].set_xscale('log')
+        ax[ics].set_xlim(0.01,2)
+        ax[ics].set_title(f'Combine Sigma {cs}')
+        ax[ics].set_xlabel('Amplitude [mK]')
+        ax[ics].set_ylabel('Likelihood')
+        ax[ics].legend()
 # %%
