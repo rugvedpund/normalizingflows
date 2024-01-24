@@ -471,15 +471,15 @@ args.fgFITS, args.freqs, args.chromatic = 'ulsa.fits', '1 51', False
 args.SNRpp=1e24
 # args.noise, args.append, old = 0.0000, '_t21zeros', True
 # args.noise, old = 0.0, False
-args.combineSigma='4 6'
+args.combineSigma=''
 args.noiseSeed=1
 # args.torchSeed=1
 
-# plot3x1D(args,old=old)
+plot3x1D(args,old=False)
 fg='Dark Ages' if args.fgFITS=='ulsa.fits' else 'Cosmic Dawn'
 noise = f'SNRpp {args.SNRpp:.0e}' if args.SNRpp is not None else f'noise {args.noise:.0e}'
 print(f'{fg} {noise},combineSigma {args.combineSigma},noiseSeed {args.noiseSeed}')
-plot3D(args,old=old)
+plot3D(args,old=False)
 # %%
 
 # explore galcut
