@@ -9,17 +9,16 @@ import corner
 # %%
 
 
-def plot3D(args,old=False):
+def plot3D(args,old=False,**kwargs):
     cosmicdawn=args.fgFITS=='ulsa.fits'
     truths=[1,14,16.4] if cosmicdawn else [1,20,67.5]
     s,ll=nf.get_samplesAndLikelihood(args,plot='all',old=old)
-    binsize=np.cbrt(len(s))
     fig=corner.corner(s,weights=nf.exp(ll),
-                    labels=[r'$A$',r'$\nu_{\rm rms}$',r'$\nu_{\rm min}$'],
-                    bins=binsize,hist_kwargs={'density':True},
+                    labels=[r'$A$',r'$\nu_{\rm rms}$',r'$\nu_{\rm min}$'],hist_kwargs={'density':True},
                     plot_datapoints=False,levels=(1-np.exp(-0.5),1-np.exp(-2)),
-                    show_titles=True)
+                    show_titles=True,**kwargs)
     corner.overplot_lines(fig,truths,color='k',ls='--',lw=1)
+    return fig
 
 def plot3x1D(args,old=False):
     cosmicdawn=args.fgFITS=='ulsa.fits'
@@ -471,15 +470,15 @@ args.fgFITS, args.freqs, args.chromatic = 'ulsa.fits', '1 51', False
 args.SNRpp=1e24
 # args.noise, args.append, old = 0.0000, '_t21zeros', True
 # args.noise, old = 0.0, False
-args.combineSigma=''
-args.noiseSeed=1
+args.combineSigma='4 6'
+# args.noiseSeed=0
 # args.torchSeed=1
 
 plot3x1D(args,old=False)
 fg='Dark Ages' if args.fgFITS=='ulsa.fits' else 'Cosmic Dawn'
 noise = f'SNRpp {args.SNRpp:.0e}' if args.SNRpp is not None else f'noise {args.noise:.0e}'
 print(f'{fg} {noise},combineSigma {args.combineSigma},noiseSeed {args.noiseSeed}')
-plot3D(args,old=False)
+plot3D(args,old=False,bins=50,range=[(0.5,1.5),(10,18),(15,18)])
 # %%
 
 # explore galcut
