@@ -131,3 +131,7 @@ dmypy.json
 #Rugved
 *.sh
 logs/
+plots
+tags
+docs/notes.md
+docs/a08af66a-4500-4034-a7bf-515c9bc1833e.png
