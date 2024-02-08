@@ -238,7 +238,7 @@ class ForegroundModel:
         return sigma2nside_map[sigma]
 
     def subsample(self,fg,subsampleSigma,galcut):
-        print('subsample fg with subsampleSigma',subsampleSigma,'and galcut',galcut')
+        print('subsample fg with subsampleSigma',subsampleSigma,'and galcut',galcut)
         nside=self.sigma2nside(subsampleSigma)
         ipix=np.arange(hp.nside2npix(nside))
         theta,phi=hp.pix2ang(nside,ipix)

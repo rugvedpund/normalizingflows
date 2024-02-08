@@ -65,7 +65,7 @@ flow.set_t21(t21, include_noise=args.noisyT21)
 if args.retrain: flow.train(flow.train_data, flow.validate_data, nocuda=False, savePath=fname,retrain=True)
 
 #3D corner
-npoints=50
+npoints=30
 # kwargs={'amin':0.9,'amax':1.1,'wmin':13.5,'wmax':14.5,'nmin':16.3,'nmax':16.5}
 kwargs={'amin':0.5,'amax':1.5,'wmin':13.5,'wmax':14.5,'nmin':16.0,'nmax':16.8}
 
