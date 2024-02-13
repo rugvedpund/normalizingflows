@@ -471,8 +471,8 @@ plot3D(args)
 args=nf.Args()
 args.fgFITS, args.freqs, args.chromatic = 'ulsa.fits', '1 51', False
 # args.fgFITS, args.freqs ='gsm16.fits', '51 101', False
-args.SNRpp,old = 1e24, False
-args.appendLik='_walkers2'
+args.SNRpp,args.append,old = 1e24, '_walkers', False
+# args.appendLik='_walkers2'
 # args.noise,old = 0.0, False
 # args.SNRpp,args.append, old = 1e24, '_oldmodel', False
 args.combineSigma='4 6'
@@ -488,7 +488,6 @@ args.noiseSeed=0
 fg='Dark Ages' if args.fgFITS=='ulsa.fits' else 'Cosmic Dawn'
 noise = f'SNRpp {args.SNRpp:.0e}' if args.SNRpp is not None else f'noise {args.noise:.0e}'
 # print(f'{fg} {noise},combineSigma {args.combineSigma},noiseSeed {args.noiseSeed}')
-args.print()
 plot3D(args,old=old,bins=40,range=[(0.8,1.2),(12,16),(15.6,17)],plot_datapoints=False)
 plt.show()
 # %%
@@ -514,4 +513,17 @@ for ics,cs in enumerate( ['','4','4 6'] ):
         ax[ics].set_xlabel('Amplitude [mK]')
         ax[ics].set_ylabel('Likelihood')
         ax[ics].legend()
+# %%
+
+# debug old vs new code
+
+*olds,oldlls = np.loadtxt('../ml/old_samplesandlls',unpack=True)
+*news,newlls = np.loadtxt('../ml/new_samplesandlls',unpack=True)
+plt.plot(oldlls,label='old')
+plt.plot(newlls,label='new')
+plt.legend()
+plt.show()
+plt.plot(oldlls-newlls)
+
+
 # %%

@@ -108,13 +108,15 @@ class NormalizingFlow:
 
     def __init__(self,nocuda,loadPath=''):
         self.device=torch.device('cpu') if nocuda else torch.device('cuda')
+        self.loadModel(loadPath)
+
+    def loadModel(self,loadPath)
         try: 
             self.model=torch.load(loadPath).to(self.device)
             self.nlayer=len(self.model.layer)
             print('model loaded from ',loadPath)
         except FileNotFoundError:
             print('no file found, need to train')
-        self.precompute_data_after=dict()
 
     def train(self,train_data,validate_data,nocuda,savePath,retrain,alpha=None,delta_logp=np.inf,
               verbose=False):

@@ -314,6 +314,7 @@ class NormalizingFlow:
 
 class FlowAnalyzerV2(NormalizingFlow):
     def __init__(self, loadPath, nocuda=False):
+        print('loading new NF.py!')
         super().__init__(loadPath=loadPath, nocuda=nocuda)
 
     def set_fg(self, args):
@@ -606,7 +607,7 @@ class FlowAnalyzerV2(NormalizingFlow):
 
     def get_likelihoodFromSamples(self, samples, cmb=False):
         assert samples.shape == (samples.shape[0], 3)
-        t21vs = np.zeros((self.nfreqs, samples.shape[0]))
+        t21vs = np.zeros((self.nfreq, samples.shape[0]))
         pt21vs = np.zeros_like(t21vs)
         for ii, s in enumerate(samples):
             a, w, n = s

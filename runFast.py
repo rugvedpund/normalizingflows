@@ -1,3 +1,6 @@
+# Example:
+# python runFast.py --noise 0.0 --combineSigma '4 6' --freqs '1 51' --fgFITS 'ulsa.fits'
+
 # %%
 import numpy as np
 import torch
@@ -82,6 +85,7 @@ torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
 
 fname=nf.get_fname(args)
+breakpoint()
 
 print(f'loading flow from {fname}')
 flow=nf.FlowAnalyzerV2(nocuda=False,loadPath=fname)
@@ -98,56 +102,61 @@ elif args.fgFITS=='gsm16.fits':
 flow.set_t21(t21, include_noise=args.noisyT21)
 if args.retrain: flow.train(flow.train_data, flow.validate_data, nocuda=False, savePath=fname,retrain=True)
 # %%
-breakpoint()
     
-npoints1=100
-nwalkers=100
-nsteps=10
-nsteps2=1000
-walkers=nf.Walkers(args,nwalkers,nsteps)
-walkers.setInitialKWargs()
-s,ll=walkers.runInitial1DLikelihoods(flow,npoints1,cmb=False)
-walkerparams=walkers.extractWalkerStart(s,ll,npoints1)
-wsteps=walkers.walkWalkers(walkerparams)
-s2,ll2=walkers.getWalkerLogLikelihood(args,flow,wsteps,cmb=False)
-betterwalkerparams=walkers.extractBetterWalkerStart(s2,ll2)
-wsteps2=walkers.rewalkWalkers(betterwalkerparams,nsteps2)
-s3,ll3=walkers.getWalkerLogLikelihood(args,flow,wsteps2,cmb=False)
-samples,loglikelihoods=walkers.getAllWalkersAndLLikelihoods(s,s2,s3,ll,ll2,ll3)
-print('done')
+breakpoint()
+samples=np.loadtxt('/home/rugved/Files/LuSEE/normalizingflows/tests/both_samplesandlls',unpack=True)[:-1].T
+breakpoint()
+s,likelihoods=flow.get_likelihoodFromSamples(samples,cmb=False)
+breakpoint()
 
-# %%
+# npoints1=100
+# nwalkers=100
+# nsteps=10
+# nsteps2=1000
+# walkers=nf.Walkers(args,nwalkers,nsteps)
+# walkers.setInitialKWargs()
+# s,ll=walkers.runInitial1DLikelihoods(flow,npoints1,cmb=False)
+# walkerparams=walkers.extractWalkerStart(s,ll,npoints1)
+# wsteps=walkers.walkWalkers(walkerparams)
+# s2,ll2=walkers.getWalkerLogLikelihood(args,flow,wsteps,cmb=False)
+# betterwalkerparams=walkers.extractBetterWalkerStart(s2,ll2)
+# wsteps2=walkers.rewalkWalkers(betterwalkerparams,nsteps2)
+# s3,ll3=walkers.getWalkerLogLikelihood(args,flow,wsteps2,cmb=False)
+# samples,loglikelihoods=walkers.getAllWalkersAndLLikelihoods(s,s2,s3,ll,ll2,ll3)
+# print('done')
 
-def plot3x1D(s,ll,npoints1):
-    limits=[0.001,0.5,0.9999]
-    fig,ax=plt.subplots(1,3,figsize=(10,4))
-    for ivs,vs in enumerate( ['A','W','N'] ):
-        samples=s[ivs*npoints1:(ivs+1)*npoints1,0]
-        likelihood=nf.exp(ll[ivs*npoints1:(ivs+1)*npoints1])
-        ax[ivs].plot(samples,likelihood)
-        ax[ivs].set_xscale('log')
-        quantiles=corner.core.quantile(samples,limits,weights=likelihood)
-        for q in quantiles:
-            ax[ivs].axvline(q,c='k',alpha=0.5,lw=0.5)
-        ax[ivs].set_title(f'{vs} \n [{quantiles[0]:.2f},{quantiles[1]:.2f},{quantiles[-1]:.2f}]')
-    return fig,ax
+# # %%
+
+# def plot3x1D(s,ll,npoints1):
+#     limits=[0.001,0.5,0.9999]
+#     fig,ax=plt.subplots(1,3,figsize=(10,4))
+#     for ivs,vs in enumerate( ['A','W','N'] ):
+#         samples=s[ivs*npoints1:(ivs+1)*npoints1,0]
+#         likelihood=nf.exp(ll[ivs*npoints1:(ivs+1)*npoints1])
+#         ax[ivs].plot(samples,likelihood)
+#         ax[ivs].set_xscale('log')
+#         quantiles=corner.core.quantile(samples,limits,weights=likelihood)
+#         for q in quantiles:
+#             ax[ivs].axvline(q,c='k',alpha=0.5,lw=0.5)
+#         ax[ivs].set_title(f'{vs} \n [{quantiles[0]:.2f},{quantiles[1]:.2f},{quantiles[-1]:.2f}]')
+#     return fig,ax
 
             
-def plot3D(s,ll,**kwargs):
-    return corner.corner(s,weights=nf.exp(ll),
-                labels=['A',r'$\nu_{\rm rms}$',r'$\nu_{\rm min}$'],
-                show_titles=True,
-                hist_kwargs={'density':True},
-                levels=[1-np.exp(-0.5),1-np.exp(-2)],**kwargs)
-# %%
+# def plot3D(s,ll,**kwargs):
+#     return corner.corner(s,weights=nf.exp(ll),
+#                 labels=['A',r'$\nu_{\rm rms}$',r'$\nu_{\rm min}$'],
+#                 show_titles=True,
+#                 hist_kwargs={'density':True},
+#                 levels=[1-np.exp(-0.5),1-np.exp(-2)],**kwargs)
+# # %%
 
-ranges=[(0.5,1.5),(15,25),(60,80)] if cosmicdawn else [(0.5,1.5),(13,15),(16.0,16.8)]
-truths=[1.0,20.0,67.5] if cosmicdawn else [1.0,14.0,16.4]
-plot3D(samples,loglikelihoods,range=ranges,plot_datapoints=True,bins=100,truths=truths)
-plt.show()
+# ranges=[(0.5,1.5),(15,25),(60,80)] if cosmicdawn else [(0.5,1.5),(13,15),(16.0,16.8)]
+# truths=[1.0,20.0,67.5] if cosmicdawn else [1.0,14.0,16.4]
+# plot3D(samples,loglikelihoods,range=ranges,plot_datapoints=True,bins=100,truths=truths)
+# plt.show()
 
-lname=nf.get_lname(args,plot='all')
-print(f'saving corner likelihood results to {lname}')
-np.savetxt(lname,np.column_stack([samples,loglikelihoods]),header='amp,width,numin,loglikelihood')
+# lname=nf.get_lname(args,plot='all')
+# print(f'saving corner likelihood results to {lname}')
+# np.savetxt(lname,np.column_stack([samples,loglikelihoods]),header='amp,width,numin,loglikelihood')
 
-# %%
+# # %%
