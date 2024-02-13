@@ -191,7 +191,7 @@ def get_lname(args, plot, old=False):
     """for saving likelihood results"""
     lname = get_fname(args, old)
     if args.appendLik:
-        lname += f"like{args.appendLik}"
+        lname += args.appendLik if old else f"like{args.appendLik}"
 
     lname += f"_noisyT21{args.noisyT21}_vs{plot}_DAfactor{args.DA_factor}_freqFluctuationLevel{args.freqFluctuationLevel}"
     if old:
