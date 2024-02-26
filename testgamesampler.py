@@ -9,13 +9,13 @@ random.seed(100)
 
 if sys.argv[1]=='gauss':
     def like(x):
-        x=np.array(x)
+        x=np.array(x).reshape(-1,3)
         # c2=np.array([[1,0.9],
         #             [0,2]])
         c=np.array([[3,1,1],
                     [0,4,1],
                     [0,0,2]])
-        return -(x@c@x.T)/2.0
+        return np.diag(-(x@c@x.T)/2.0)
     ga=gamex.Game(like,[0.5,0.0,0.0],[0.7,0.7,0.7])
     ga.N1=1000
     ga.tweight=1.50
@@ -27,8 +27,8 @@ elif sys.argv[1]=='ring':
     def like(x):
         x=np.array(x)
         r2=(x**2).sum(axis=1 if x.ndim==2 else None)
-        return -(r2-4.0)**2/(2*0.4**2)
-    ga=gamex.Game(like,[4.5,0.0,0.0],[0.3,0.3,0.3])
+        return -(r2-4.0)**2/(2*0.5**2)
+    ga=gamex.Game(like,[3.5,0.0,0.0],[0.3,0.3,0.3])
     ga.blow=2.0
     ga.tweight=1.50
     sname='ring.pdf'
@@ -86,13 +86,15 @@ def plotel(G):
 
 ## now we plot
 xyz=np.array([sa.pars for sa in ga.sample_list])
-ww=np.array([sa.we for sa in ga.sample_list])
+ww=np.array([sa.we for sa in ga.sample_list]).flatten()
 
-cornerkwargs={'show_titles':True,'plot_contours':False,'bins':100,'range':[(-5,5),(-5,5),(-5,5)]}
-# # just samples
-# fig=corner.corner(xyz,**cornerkwargs)
-# plt.suptitle('All Samples')
-# plt.show()
+cornerkwargs={'show_titles':True,'plot_contours':False,'bins':100,'range':[(-5,5),(-5,5),(-5,5)],
+        'no_fill_contours':True, 'labels':['x','y','z'], 'pcolor_kwargs':{'cmap':'viridis'}}
+
+# just samples
+fig=corner.corner(xyz,**cornerkwargs)
+plt.suptitle('All Samples')
+plt.show()
 
 # weighted samples, with gaussians
 wsumsa=ww/ww.sum()

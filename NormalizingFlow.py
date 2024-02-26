@@ -621,6 +621,11 @@ class FlowAnalyzerV2(NormalizingFlow):
         )
         return samples, loglikelihood
 
+    def get_likelihoodFromSamplesGAME(self,samples,cmb=False):
+        samples=np.array(samples).reshape((-1,3))
+        _,loglikelihood = self.get_likelihoodFromSamples(samples,cmb=cmb)
+        return loglikelihood
+
     def getGainFluctuationMap(self):
         # does not work for chromatic maps
         assert self.args.chromatic == False
