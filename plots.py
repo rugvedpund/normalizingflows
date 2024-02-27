@@ -8,8 +8,16 @@ import corner
 
 # %%
 
+def loadsamplesandlls(fname):
+    f=np.loadtxt(fname,unpack=True)
+    return f[:-1].T,f[-1]
 
-def plot3D(args,old=False,**kwargs):
+def plot3D(s,ll,**kwargs):
+    fig=corner.corner(s,weights=nf.exp(ll),bins=50,range=[(0.8,1.2),(12,16),(15.6,17)],levels=[1-np.exp(-0.5),1-np.exp(-2)],**kwargs)
+    corner.overplot_lines(fig,[1,14,16.4],color='k',ls='--',lw=1)
+    return fig
+    
+def plot3DfromArgs(args,old=False,**kwargs):
     cosmicdawn=args.fgFITS=='ulsa.fits'
     truths=[1,14,16.4] if cosmicdawn else [1,20,67.5]
     s,ll=nf.get_samplesAndLikelihood(args,plot='all',old=old)
@@ -515,15 +523,34 @@ for ics,cs in enumerate( ['','4','4 6'] ):
         ax[ics].legend()
 # %%
 
-# debug old vs new code
+# hysteresis check
 
-*olds,oldlls = np.loadtxt('../ml/old_samplesandlls',unpack=True)
-*news,newlls = np.loadtxt('../ml/new_samplesandlls',unpack=True)
-plt.plot(oldlls,label='old')
-plt.plot(newlls,label='new')
-plt.legend()
-plt.show()
-plt.plot(oldlls-newlls)
+sbothnew,llbothnew=loadsamplesandlls('tests/both_samplesandlls_newmodel_newcodeN0')
+sbothold,llbothold=loadsamplesandlls('tests/both_samplesandlls_oldcode')
+sold,llold=loadsamplesandlls('tests/old_samplesandlls')
+soldbig,lloldbig=loadsamplesandlls('tests/old_samplesandlls_bigcube')
+snew,llnew=loadsamplesandlls('tests/new_samplesandlls_oldcode')
+plot3D(sbothnew,llbothnew,plot_datapoints=True);plt.show()
+plot3D(sbothold,llbothold,plot_datapoints=True);plt.show()
+plot3D(sold,llold,plot_datapoints=True);plt.show()
+plot3D(soldbig,lloldbig,plot_datapoints=True);plt.show()
+# plot3D(snew,llnew,plot_datapoints=False);plt.show()
 
+
+
+# %%
+
+args=nf.Args()
+args.fgFITS, args.freqs, args.chromatic = 'ulsa.fits', '1 51', False
+# args.appendLik='_bigcube'
+args.combineSigma='4 6'
+args.noise, args.append, old = 0.00001, '_oldmodel', False
+range=[(0.7,1.5),(12.95,15.05),(15.35,17.45)]
+# args.noise, old = 0.00001, True
+# range=[(0.9,1.1),(13.95,14.05),(16.35,16.45)]
+args.noiseSeed=2
+plot3DfromArgs(args,old=old,bins=50,range=range,plot_datapoints=False); plt.show()
+
+# %%
 
 # %%

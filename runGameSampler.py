@@ -69,7 +69,7 @@ for arg in vars(args):
 # args.SNRpp=1e24
 # args.torchSeed=0
 
-###-------------------------------------------------------------------------------------------------###
+#------------------------------------------------------------------------------
 
 
 # set seed
@@ -85,6 +85,7 @@ torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
 fname=nf.get_fname(args)
 
+breakpoint()
 print(f'loading flow from {fname}')
 flow=nf.FlowAnalyzerV2(nocuda=False,loadPath=fname)
 flow.set_fg(args)
@@ -100,16 +101,18 @@ elif args.fgFITS=='gsm16.fits':
 flow.set_t21(t21, include_noise=args.noisyT21)
 if args.retrain: flow.train(flow.train_data, flow.validate_data, nocuda=False, savePath=fname,retrain=True)
 
-# -------------------------------
+# -----------------------------------------------------------------------------
 # main sampler block
 
-ga=gamex.Game(flow.get_likelihoodFromSamplesGAME,[1.0,14.0,16.4],[1.0,1.0,1.0])
-ga.N1=100
+ga=gamex.Game(flow.get_likelihoodFromSamplesGAME,[1.0,14.0,16.4],[0.7,0.7,0.7])
+ga.N1=1000
 ga.tweight=1.50
 ga.mineffsamp=5000
 sname='blah.pdf'
 ga.run()
 
+# -----------------------------------------------------------------------------
+## now we plot
 
 def plotel(G):
     global fig
@@ -131,17 +134,18 @@ def plotel(G):
                                 G.mean+vec[2]],c='r',marker='',linestyle='-')
 
 
-## now we plot
 xyz=np.array([sa.pars for sa in ga.sample_list])
 ww=np.array([sa.we for sa in ga.sample_list]).flatten()
 
-cornerkwargs={'show_titles':True,'plot_contours':False,'bins':100,'range':[(-5,5),(-5,5),(-5,5)],
-        'no_fill_contours':True, 'labels':[r'A',r'$\nu_{\rm rms}$',r'$\nu_{\rm min}$'], 'pcolor_kwargs':{'cmap':'viridis'}}
+cornerkwargs={'show_titles':True,'levels':[1-np.exp(-0.5),1-np.exp(-2)],'bins':100,
+        'range':[(0.8,1.2),(12,16),(15.6,17)],
+        'labels':[r'A',r'$\nu_{\rm rms}$',r'$\nu_{\rm min}$'], 'truths':[1.0,14.0,16.4],
+        'plot_datapoints':False}
 
-# just samples
-fig=corner.corner(xyz,**cornerkwargs)
-plt.suptitle('Just Samples')
-plt.show()
+# # just samples
+# fig=corner.corner(xyz,**cornerkwargs)
+# plt.suptitle('Just Samples')
+# plt.show()
 
 # weighted samples, with gaussians
 wsumsa=ww/ww.sum()
