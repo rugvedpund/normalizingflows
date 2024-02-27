@@ -11,9 +11,8 @@ import fitsio
 import os
 import corner
 
-root = os.environ[
-    "NF_WORKDIR"
-]  # specify path to save/load models and likelihood results
+# specify path to save/load models and likelihood results
+root = os.environ["NF_WORKDIR"]
 
 
 def plot_corner(args):
@@ -314,7 +313,7 @@ class NormalizingFlow:
 
 class FlowAnalyzerV2(NormalizingFlow):
     def __init__(self, loadPath, nocuda=False):
-        print('loading new NF.py!')
+        print("loading new NF.py!")
         super().__init__(loadPath=loadPath, nocuda=nocuda)
 
     def set_fg(self, args):
@@ -621,9 +620,9 @@ class FlowAnalyzerV2(NormalizingFlow):
         )
         return samples, loglikelihood
 
-    def get_likelihoodFromSamplesGAME(self,samples,cmb=False):
-        samples=np.array(samples).reshape((-1,3))
-        _,loglikelihood = self.get_likelihoodFromSamples(samples,cmb=cmb)
+    def get_likelihoodFromSamplesGAME(self, samples, cmb=False):
+        samples = np.array(samples).reshape((-1, 3))
+        _, loglikelihood = self.get_likelihoodFromSamples(samples, cmb=cmb)
         return loglikelihood
 
     def getGainFluctuationMap(self):

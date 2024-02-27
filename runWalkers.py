@@ -1,7 +1,7 @@
 # Example:
 # python runFast.py --noise 0.0 --combineSigma '4 6' --freqs '1 51' --fgFITS 'ulsa.fits'
 
-import gamex
+# %%
 import numpy as np
 import torch
 import fitsio
@@ -58,7 +58,7 @@ parser.add_argument(
 )  # bool, whether to average adjacent freq bins
 
 parser.add_argument("--retrain", action="store_true")
-parser.add_argument("--appendLik", type=str, default="_game", required=False)
+parser.add_argument("--appendLik", type=str, default="_walkers", required=False)
 args = parser.parse_args()
 
 # must have --noisyT21 and --diffCombineSigma!!!
@@ -83,8 +83,9 @@ for arg in vars(args):
 # args.SNRpp=1e24
 # args.torchSeed=0
 
-# ------------------------------------------------------------------------------
+###-------------------------------------------------------------------------------------------------###
 
+# %%
 
 # set seed
 print(f"setting noise seed {args.noiseSeed} and torch seed {args.torchSeed}")
@@ -98,8 +99,8 @@ torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
 
 fname = nf.get_fname(args)
-
 breakpoint()
+
 print(f"loading flow from {fname}")
 flow = nf.FlowAnalyzerV2(nocuda=False, loadPath=fname)
 flow.set_fg(args)
@@ -121,76 +122,82 @@ if args.retrain:
     flow.train(
         flow.train_data, flow.validate_data, nocuda=False, savePath=fname, retrain=True
     )
+# %%
 
-# -----------------------------------------------------------------------------
-# main sampler block
+# samples=np.loadtxt('/home/rugved/Files/LuSEE/normalizingflows/tests/new_samplesandlls',unpack=True)[:-1].T
+# breakpoint()
+# s,loglikelihoods=flow.get_likelihoodFromSamples(samples,cmb=False)
+# breakpoint()
 
-start = [1, 20, 67.5] if cosmicdawn else [1, 14, 16.4]
-ga = gamex.Game(flow.get_likelihoodFromSamplesGAME, start, sigreg=[0.7, 0.7, 0.7])
-ga.N1 = 1000
-ga.mineffsamp = 5000
-ga.run()
+npoints1 = 100
+nwalkers = 100
+nsteps = 10
+nsteps2 = 100
+walkers = nf.Walkers(args, nwalkers, nsteps)
+walkers.setInitialKWargs()
+s, ll = walkers.runInitial1DLikelihoods(flow, npoints1, cmb=False)
+walkerparams = walkers.extractWalkerStart(s, ll, npoints1)
+wsteps = walkers.walkWalkers(walkerparams)
+s2, ll2 = walkers.getWalkerLogLikelihood(args, flow, wsteps, cmb=False)
+betterwalkerparams = walkers.extractBetterWalkerStart(s2, ll2)
+wsteps2 = walkers.rewalkWalkers(betterwalkerparams, nsteps2)
+s3, ll3 = walkers.getWalkerLogLikelihood(args, flow, wsteps2, cmb=False)
+samples, loglikelihoods = walkers.getAllWalkersAndLLikelihoods(s, s2, s3, ll, ll2, ll3)
 
-# -----------------------------------------------------------------------------
-## now we plot
+print("done")
+
+# %%
 
 
-def plotel(G):
-    global fig
-    cov = G.cov
-    print(G.cov)
-    val, vec = np.linalg.eig(cov)
-    vec = vec.T
+def plot3x1D(s, ll, npoints1):
+    limits = [0.001, 0.5, 0.9999]
+    fig, ax = plt.subplots(1, 3, figsize=(10, 4))
+    for ivs, vs in enumerate(["A", "W", "N"]):
+        samples = s[ivs * npoints1 : (ivs + 1) * npoints1, 0]
+        likelihood = nf.exp(ll[ivs * npoints1 : (ivs + 1) * npoints1])
+        ax[ivs].plot(samples, likelihood)
+        ax[ivs].set_xscale("log")
+        quantiles = corner.core.quantile(samples, limits, weights=likelihood)
+        for q in quantiles:
+            ax[ivs].axvline(q, c="k", alpha=0.5, lw=0.5)
+        ax[ivs].set_title(
+            f"{vs} \n [{quantiles[0]:.2f},{quantiles[1]:.2f},{quantiles[-1]:.2f}]"
+        )
+    return fig, ax
 
-    vec[0] *= np.sqrt(np.real(val[0]))
-    vec[1] *= np.sqrt(np.real(val[1]))
-    print(vec[0], "A")
-    print(vec[1], "B")
-    corner.overplot_points(fig, G.mean[None], c="b", marker="o", ms=1.0)
-    corner.overplot_points(
-        fig, [G.mean - vec[0], G.mean + vec[0]], c="r", marker="", linestyle="-", lw=0.5
+
+def plot3D(s, ll, **kwargs):
+    return corner.corner(
+        s,
+        weights=nf.exp(ll),
+        labels=["A", r"$\nu_{\rm rms}$", r"$\nu_{\rm min}$"],
+        show_titles=True,
+        hist_kwargs={"density": True},
+        levels=[1 - np.exp(-0.5), 1 - np.exp(-2)],
+        **kwargs,
     )
-    corner.overplot_points(
-        fig, [G.mean - vec[1], G.mean + vec[1]], c="r", marker="", linestyle="-", lw=0.5
-    )
-    corner.overplot_points(
-        fig, [G.mean - vec[2], G.mean + vec[2]], c="r", marker="", linestyle="-", lw=0.5
-    )
 
 
-samples = np.array([sa.pars for sa in ga.sample_list])
-ww = np.array([sa.we for sa in ga.sample_list]).flatten()
+# %%
 
-cornerkwargs = {
-    "show_titles": True,
-    "levels": [1 - np.exp(-0.5), 1 - np.exp(-2)],
-    "bins": 50,
-    "range": [(0.8, 1.2), (18, 22), (65, 70)]
+ranges = (
+    [(0.9, 1.1), (19, 21), (65, 70)]
     if cosmicdawn
-    else [(0.8, 1.2), (12, 16), (15.6, 17)],
-    "labels": [r"A", r"$\nu_{\rm rms}$", r"$\nu_{\rm min}$"],
-    "truths": [1, 20, 67.5] if cosmicdawn else [1.0, 14.0, 16.4],
-    "plot_datapoints": False,
-}
-
-# just samples
-fig = corner.corner(samples, **cornerkwargs)
-plt.suptitle("Just Samples")
-plt.show()
-
-# weighted samples, with gaussians
-wsumsa = ww / ww.sum()
-fig = corner.corner(samples, weights=wsumsa, **cornerkwargs)
-for G in ga.Gausses:
-    plotel(G)
-plt.suptitle("Weighted Samples")
+    else [(0.5, 1.5), (13, 15), (16.0, 16.8)]
+)
+truths = [1.0, 20.0, 67.5] if cosmicdawn else [1.0, 14.0, 16.4]
+# plot3D(samples,loglikelihoods,range=ranges,plot_datapoints=True,bins=100,truths=truths)
 plt.show()
 
 lname = nf.get_lname(args, plot="all")
 print(f"saving corner likelihood results to {lname}")
+breakpoint()
 np.savetxt(
     lname,
-    np.column_stack([samples, np.log(ww)]),
+    np.column_stack([samples, loglikelihoods]),
     header="amp,width,numin,loglikelihood",
 )
 breakpoint()
+
+
+# # %%
