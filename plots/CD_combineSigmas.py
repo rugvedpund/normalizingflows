@@ -12,9 +12,9 @@ import os
 root = '~/Files/LuSEE/normalizingflows/'
 
 args = nf.Args()
-args.fgFITS, args.freqs, args.chromatic = "ulsa.fits", "1 51", False
+args.fgFITS, args.freqs, args.chromatic = "gsm16.fits", "51 101", False
 args.SNRpp = 1e24
-args.appendLik = "_walkers"
+args.appendLik = "_game"
 
 cosmicdawn = True if args.fgFITS == "gsm16.fits" else False
 colors = {"": "gray", "4": "C2", "4 6": "C3"}
@@ -34,7 +34,7 @@ cornerkwargs = {
     "bins": 50,
     "range": ranges,
     "labels": [r"A", r"$\nu_{\rm rms}$", r"$\nu_{\rm min}$"],
-    "plot_datapoints": True,
+    "plot_datapoints": False,
     # "hist_kwargs":{"density": True},
 }
 # do i need hist_kwargs={"density": True}

@@ -161,7 +161,6 @@ def get_t21vs1d(freqs, npoints, vs, cmb=False, cosmicdawn=False, **kwargs):
         t21_vs[:, i] = tDA(xx)
     return samples, t21_vs
 
-
 def get_fname(args, old=False):
     """for saving model after training"""
     cS = ",".join(args.combineSigma.split())
@@ -521,7 +520,7 @@ class FlowAnalyzerV2(NormalizingFlow):
             t21cS[: self.nfreq, :] = t21_noisy.copy()
         else:
             t21cS = np.tile(t21_noisy, (self.nsigmas, 1))
-        print(t21cS.shape)
+        print("Calculating likelihood for nfreqs,npoints = ", t21cS.shape)
         proj_t21 = (self.eve.T @ t21cS) / self.rms[:, None]
         proj_t21 = np.delete(proj_t21, self.nPCAarr, axis=0)
         return proj_t21
