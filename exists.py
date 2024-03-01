@@ -6,10 +6,7 @@ from sys import exit
 parser = parser.create_parser()
 args = parser.parse_args()
 
-
-for arg in vars(args):
-    val = str(getattr(args, arg))
-    print(f"{arg:20s} {val:20s}")
+args.print()
 
 fname = get_fname(args)
 if path.exists(fname):

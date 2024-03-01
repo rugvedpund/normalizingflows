@@ -1,7 +1,7 @@
 # Example:
 # python runGameSampler.py --noise 0.0 --combineSigma '4 6' --freqs '1 51' --fgFITS 'ulsa.fits'
 
-import gamex
+import gamesampler
 import numpy as np
 import torch
 import fitsio
@@ -24,9 +24,7 @@ args.diffCombineSigma = True
 
 args.appendLik = "_game"
 
-for arg in vars(args):
-    val = str(getattr(args, arg))
-    print(f"{arg:20s} {val:20s}")
+args.print()
 
 ##---------------------------------------------------------------------------##
 
@@ -69,7 +67,7 @@ if args.retrain:
 # main sampler block
 
 start = [1, 20, 67.5] if cosmicdawn else [1, 14, 16.4]
-ga = gamex.Game(flow.get_likelihoodFromSamplesGAME, start, sigreg=[0.7, 0.7, 0.7])
+ga = gamesampler.Game(flow.get_likelihoodFromSamplesGAME, start, sigreg=[0.7, 0.7, 0.7])
 ga.N1 = 1000
 ga.mineffsamp = 5000
 ga.run()

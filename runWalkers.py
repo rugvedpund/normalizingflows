@@ -5,6 +5,7 @@ import numpy as np
 import torch
 import fitsio
 import NormalizingFlow as nf
+import walkers
 import lusee
 import parser
 import os
@@ -23,9 +24,7 @@ args.diffCombineSigma = True
 
 args.appendLik = "_walkers"
 
-for arg in vars(args):
-    val = str(getattr(args, arg))
-    print(f"{arg:20s} {val:20s}")
+args.print()
 
 ##---------------------------------------------------------------------------##
 
@@ -73,16 +72,16 @@ npoints1 = 100
 nwalkers = 100
 nsteps = 10
 nsteps2 = 100
-walkers = nf.Walkers(args, nwalkers, nsteps)
-walkers.setInitialKWargs()
-s, ll = walkers.runInitial1DLikelihoods(flow, npoints1, cmb=False)
-walkerparams = walkers.extractWalkerStart(s, ll, npoints1)
-wsteps = walkers.walkWalkers(walkerparams)
-s2, ll2 = walkers.getWalkerLogLikelihood(args, flow, wsteps, cmb=False)
-betterwalkerparams = walkers.extractBetterWalkerStart(s2, ll2)
-wsteps2 = walkers.rewalkWalkers(betterwalkerparams, nsteps2)
-s3, ll3 = walkers.getWalkerLogLikelihood(args, flow, wsteps2, cmb=False)
-samples, loglikelihoods = walkers.getAllWalkersAndLLikelihoods(s, s2, s3, ll, ll2, ll3)
+walks = walkers.Walkers(args, nwalkers, nsteps)
+walks.setInitialKWargs()
+s, ll = walks.runInitial1DLikelihoods(flow, npoints1, cmb=False)
+walkerparams = walks.extractWalkerStart(s, ll, npoints1)
+wsteps = walks.walkWalkers(walkerparams)
+s2, ll2 = walks.getWalkerLogLikelihood(args, flow, wsteps, cmb=False)
+betterwalkerparams = walks.extractBetterWalkerStart(s2, ll2)
+wsteps2 = walks.rewalkWalkers(betterwalkerparams, nsteps2)
+s3, ll3 = walks.getWalkerLogLikelihood(args, flow, wsteps2, cmb=False)
+samples, loglikelihoods = walks.getAllWalkersAndLLikelihoods(s, s2, s3, ll, ll2, ll3)
 
 print("done")
 

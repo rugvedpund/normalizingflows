@@ -21,9 +21,7 @@ args.diffCombineSigma = True
 
 args.appendLik = "_cube"
 
-for arg in vars(args):
-    val = str(getattr(args, arg))
-    print(f"{arg:20s} {val:20s}")
+args.print()
 
 ##---------------------------------------------------------------------------##
 

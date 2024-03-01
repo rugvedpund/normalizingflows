@@ -1,4 +1,4 @@
-import gamex
+import gamesampler
 import sys,random
 import matplotlib.pyplot as plt
 import numpy as np
@@ -16,7 +16,7 @@ if sys.argv[1]=='gauss':
                     [0,4,1],
                     [0,0,2]])
         return np.diag(-(x@c@x.T)/2.0)
-    ga=gamex.Game(like,[0.5,0.0,0.0],[0.7,0.7,0.7])
+    ga=gamesampler.Game(like,[0.5,0.0,0.0],[0.7,0.7,0.7])
     ga.N1=1000
     ga.tweight=1.50
     ga.mineffsamp=5000
@@ -28,7 +28,7 @@ elif sys.argv[1]=='ring':
         x=np.array(x)
         r2=(x**2).sum(axis=1 if x.ndim==2 else None)
         return -(r2-4.0)**2/(2*0.5**2)
-    ga=gamex.Game(like,[3.5,0.0,0.0],[0.3,0.3,0.3])
+    ga=gamesampler.Game(like,[3.5,0.0,0.0],[0.3,0.3,0.3])
     ga.blow=2.0
     ga.tweight=1.50
     sname='ring.pdf'
@@ -45,7 +45,7 @@ if sys.argv[1]=='dblgauss':
         c2=0.3*c1
         m2=np.array([3,3,3])
         return -(x@c1@x.T + (x-m2)@c2@(x-m2).T)/2.0 #centered at 0,0,0 and m2
-    ga=gamex.Game(like,[4.5,0.0,0.0],[0.7,0.7,0.7])
+    ga=gamesampler.Game(like,[4.5,0.0,0.0],[0.7,0.7,0.7])
     ga.N1=1000
     ga.tweight=1.50
     ga.mineffsamp=5000
