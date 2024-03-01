@@ -15,16 +15,17 @@ import matplotlib.pyplot as plt
 ##---------------------------------------------------------------------------##
 # argparser block
 
-parser = parser.create_parser()
-args = parser.parse_args()
+argparser = parser.create_parser()
+args = argparser.parse_args()
 
 # must have --noisyT21 and --diffCombineSigma!!!
 args.noisyT21 = True
 args.diffCombineSigma = True
 
-args.appendLik = "_game"
+if args.appendLik == "":
+    args.appendLik = "_game"
 
-args.print()
+parser.prettyprint(args)
 
 ##---------------------------------------------------------------------------##
 
@@ -57,13 +58,13 @@ elif args.fgFITS == "gsm16.fits":
         flow.freqs, nu_rms=20, nu_min=67.5, A=0.130
     )
     cosmicdawn = True
-flow.set_t21(t21, include_noise=args.noisyT21)
+flow.set_t21(t21)
 if args.retrain:
     flow.train(
         flow.train_data, flow.validate_data, nocuda=False, savePath=fname, retrain=True
     )
 
-# -----------------------------------------------------------------------------
+##---------------------------------------------------------------------------##
 # main sampler block
 
 start = [1, 20, 67.5] if cosmicdawn else [1, 14, 16.4]
@@ -72,8 +73,8 @@ ga.N1 = 1000
 ga.mineffsamp = 5000
 ga.run()
 
-# -----------------------------------------------------------------------------
-## now we plot
+##---------------------------------------------------------------------------##
+# now we plot
 
 
 def plotel(G):

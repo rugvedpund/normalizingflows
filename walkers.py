@@ -79,7 +79,7 @@ class Walkers:
                 flow.freqs, a, w, n, cmb=False, cosmicdawn=self.cosmicdawn
             )
         print("projecting t21")
-        pt21vs = flow.proj_t21(t21vs, include_noise=self.args.noisyT21)
+        pt21vs = flow.proj_t21(t21vs)
         print("getting likelihood")
 
         loglikelihood = flow.get_likelihood(
@@ -135,7 +135,7 @@ class Walkers:
             t21vs[:, ii] = nf.T_DA(
                 flow.freqs, a, w, n, cmb=cmb, cosmicdawn=self.cosmicdawn
             )
-        pt21vs = flow.proj_t21(t21vs, include_noise=args.noisyT21)
+        pt21vs = flow.proj_t21(t21vs)
         loglikelihood = flow.get_likelihood(
             pt21vs, args.freqFluctuationLevel, args.DA_factor, debugfF=False
         )

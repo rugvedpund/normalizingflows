@@ -10,6 +10,8 @@ import fitsio
 import os
 import corner
 
+verbose=True
+
 # specify path to save/load models and likelihood results
 try:
     root = os.environ["NF_WORKDIR"]
@@ -26,9 +28,9 @@ class NormalizingFlow:
         try:
             self.model = torch.load(loadPath).to(self.device)
             self.nlayer = len(self.model.layer)
-            print("model loaded from ", loadPath)
+            if verbose: print("model loaded from ", loadPath)
         except FileNotFoundError:
-            print("no file found, need to train")
+            if verbose: print("no file found, need to train")
         self.precompute_data_after = dict()
 
     def train(
@@ -46,12 +48,12 @@ class NormalizingFlow:
         data must be of shape (nsamples, ndim)
         """
         self.nsamples, self.ndim = train_data.shape
-        print("now training model with nsamples", self.nsamples, " of ndim", self.ndim)
+        if verbose: print("now training model with nsamples", self.nsamples, " of ndim", self.ndim)
         self.train_data = self._toTensor(train_data)
         self.validate_data = self._toTensor(validate_data)
         if retrain:
             from sinf import GIS
-            print("retraining...")
+            if verbose: print("retraining...")
             self.model = None
         self.model = GIS.GIS(
             self.train_data.clone(),
@@ -62,9 +64,9 @@ class NormalizingFlow:
             verbose=verbose,
         )
         self.nlayer = len(self.model.layer)
-        print("Total number of iterations: ", len(self.model.layer))
+        if verbose: print("Total number of iterations: ", len(self.model.layer))
         torch.save(self.model, savePath)
-        print("model saved at", savePath)
+        if verbose: print("model saved at", savePath)
 
     def _toTensor(self, nparray):
         return torch.from_numpy(nparray).float().to(self.device)
@@ -236,7 +238,7 @@ def get_lname(args, plot, old=False):
 def get_samplesAndLikelihood(args, plot, verbose=False, old=False):
     lname = get_lname(args, plot, old)
     if verbose:
-        print(f"loading corner likelihood results from {lname}")
+        if verbose: print(f"loading corner likelihood results from {lname}")
     f = np.loadtxt(lname, unpack=True)
     likelihood = f[-1]
     samples = f[:-1].T
@@ -272,7 +274,7 @@ def get_constraints(s, ll):
 
 class FlowAnalyzerV2(NormalizingFlow):
     def __init__(self, loadPath, nocuda=False):
-        print("loading Normalizing Flow module...")
+        if verbose: print("loading Normalizing Flow module...")
         super().__init__(loadPath=loadPath, nocuda=nocuda)
 
     def set_fg(self, args):
@@ -310,7 +312,7 @@ class FlowAnalyzerV2(NormalizingFlow):
         self.freqs = np.arange(self.fmin, self.fmax)
         self.cosmicdawn = True if args.fgFITS == "gsm16.fits" else False
 
-        print(f"loading foreground map {args.fgFITS}")
+        if verbose: print(f"loading foreground map {args.fgFITS}")
         fgpath = os.path.join(root,args.fgFITS)
         self.fg = fitsio.read(fgpath)
 
@@ -326,19 +328,19 @@ class FlowAnalyzerV2(NormalizingFlow):
         np.random.seed(self.noiseSeed)
         # generate noise
         if self.SNRpp is not None:
-            print(f"generating radiometer noise with SNRpp={self.SNRpp:.0e}")
+            if verbose: print(f"generating radiometer noise with SNRpp={self.SNRpp:.0e}")
             self.noise = self.generate_radiometer_noise(
                 self.fg.copy(), self.SNRpp, self.subsampleSigma
             )
         else:
-            print(f"generating noise with noise_K={self.noise_K}")
+            if verbose: print(f"generating noise with noise_K={self.noise_K}")
             self.noise = self.generate_noise(
                 self.fg.copy(), self.noise_K, self.subsampleSigma
             )
 
         # do combineSigma
         sigmas = [self.sigma] + self.combineSigma
-        print("doing sigmas", sigmas)
+        if verbose: print("doing sigmas", sigmas)
         self.nsigmas = len(sigmas)
         self.fg_cS = np.zeros((self.nsigmas, *self.fg.shape))
         self.fgnoisy = self.fg.copy() + self.noise.copy()
@@ -365,7 +367,7 @@ class FlowAnalyzerV2(NormalizingFlow):
                 # hp.mollview(self.fg_cS[isig,f,:],title=f'smooth*gainF {self.gainFluctuationLevel} {sig}')
 
         self.fgsmooth = self.fg_cS.reshape(self.nsigmas * self.nfreq, -1)
-        print(f"{self.fgsmooth.shape=}")
+        if verbose: print(f"{self.fgsmooth.shape=}")
 
         self.fgmeans_smoothgF = self.fg_cS.reshape(self.nsigmas * self.nfreq, -1).mean(
             axis=1
@@ -379,21 +381,21 @@ class FlowAnalyzerV2(NormalizingFlow):
             for isig, sig in enumerate(sigmas):
                 if isig == 0:
                     continue
-                print("doing diffCombineSigma for combineSigma")
+                if verbose: print("doing diffCombineSigma for combineSigma")
                 self.fgsmooth_diff[isig * self.nfreq : (isig + 1) * self.nfreq, :] = (
                     self.fg_cS[isig, :, :].copy() - self.fg_cS[isig - 1, :, :].copy()
                 )
             self.fgsmooth = self.fgsmooth_diff.copy()
-            print(f"{self.fgsmooth.shape=}")
+            if verbose: print(f"{self.fgsmooth.shape=}")
 
         # do avgAdjacentFreqBins
         if self.avgAdjacentFreqBins:
-            print("combining adjacent freq bins")
+            if verbose: print("combining adjacent freq bins")
             self.nfreq = self.nfreq // 2
             self.fgsmooth_cAFB = np.zeros((self.nsigmas, self.nfreq, self.npix))
             self.fgsmooth_cAFB = (self.fg_cS[:, ::2, :] + self.fg_cS[:, 1::2, :]) / 2
             self.fgsmooth = self.fgsmooth_cAFB.reshape(self.nsigmas * self.nfreq, -1)
-            print(f"{self.fgsmooth.shape=}")
+            if verbose: print(f"{self.fgsmooth.shape=}")
 
         # #do PCA with full map with galcut (no subsampling)
         self.fgcut = self.galaxy_cut(self.fgsmooth.copy(), self.galcut)
@@ -416,14 +418,14 @@ class FlowAnalyzerV2(NormalizingFlow):
             self.fgss - self.fgss.mean(axis=1)[:, None]
         )
         # print('new')
-        print(f"{self.fgss.shape=}")
+        if verbose: print(f"{self.fgss.shape=}")
         proj_fg = self.eve.T @ (self.fgss - self.fgss.mean(axis=1)[:, None])
         self.pfg = proj_fg.copy()
         self.rms = np.sqrt(proj_fg.var(axis=1))
         out = proj_fg / self.rms[:, None]
         self.data = np.random.permutation(out.T)  # transpose and permute for torch
         self.fgmeansdata = (self.eve.T @ self.fgss.mean(axis=1)) / self.rms
-        print(f"{self.data.shape=} {self.fgmeansdata.shape=} {self.eve.shape=}")
+        if verbose: print(f"{self.data.shape=} {self.fgmeansdata.shape=} {self.eve.shape=}")
 
         # remove nPCA modes
         self.nPCA = (
@@ -431,31 +433,31 @@ class FlowAnalyzerV2(NormalizingFlow):
             if len(args.nPCA) == 0
             else [int(p) for p in args.nPCA.split()]
         )
-        print(f"using modes between {args.nPCA}")
+        if verbose: print(f"using modes between {args.nPCA}")
         self.nPCAarr = np.hstack(
             [
                 np.arange(self.nPCA[0]),
                 np.arange(self.nPCA[1], self.nfreq * self.nsigmas),
             ]
         )
-        print(self.nPCAarr)
+        if verbose: print(self.nPCAarr)
         self.data = np.delete(
             self.data, self.nPCAarr, axis=1
         )  # delete last nPCA columns
         self.fgmeansdata = np.delete(self.fgmeansdata, self.nPCAarr)
-        print(f"{self.data.shape=} {self.fgmeansdata.shape=} {self.eve.shape=}")
+        if verbose: print(f"{self.data.shape=} {self.fgmeansdata.shape=} {self.eve.shape=}")
 
         ndata, _ = self.data.shape
         ntrain = int(0.8 * ndata)
         self.train_data = self.data[:ntrain, :].copy()
         self.validate_data = self.data[ntrain:, :].copy()
-        print(f"done! {self.train_data.shape=},{self.validate_data.shape=} ready")
+        if verbose: print(f"done! {self.train_data.shape=},{self.validate_data.shape=} ready")
 
     def set_t21(self, t21):
         if self.args.noisyT21:
             t21 += self.noise.mean(axis=1)
         if self.avgAdjacentFreqBins:
-            print("combining adjacent freq bins for t21")
+            if verbose: print("combining adjacent freq bins for t21")
             t21 = (t21[::2] + t21[1::2]) / 2
         if self.diffCombineSigma:
             self.t21 = np.zeros(self.nfreq * self.nsigmas)
@@ -465,8 +467,8 @@ class FlowAnalyzerV2(NormalizingFlow):
         self.pt21 = self.eve.T @ self.t21
         self.t21data = self.eve.T @ self.t21 / self.rms
         self.t21data = np.delete(self.t21data, self.nPCAarr)
-        print(f"{self.t21data.shape=} ready")
-        print("ready to calculate likelihoods!")
+        if verbose: print(f"{self.t21data.shape=} ready")
+        if verbose: print("ready to calculate likelihoods!")
 
     def proj_t21(self, t21_vs):
         include_noise=self.args.noisyT21
@@ -483,7 +485,7 @@ class FlowAnalyzerV2(NormalizingFlow):
             t21cS[: self.nfreq, :] = t21_noisy.copy()
         else:
             t21cS = np.tile(t21_noisy, (self.nsigmas, 1))
-        print("Calculating likelihood for npoints = ", t21cS.shape[1])
+        if verbose: print("Calculating likelihood for npoints = ", t21cS.shape[1])
         proj_t21 = (self.eve.T @ t21cS) / self.rms[:, None]
         proj_t21 = np.delete(proj_t21, self.nPCAarr, axis=0)
         return proj_t21
@@ -510,12 +512,12 @@ class FlowAnalyzerV2(NormalizingFlow):
         try:
             nside = sigma2nside_map[sigma]
         except KeyError:
-            print("sigmas must be either 0.5, 1.0, 2.0, 4.0, or 8.0")
+            if verbose: print("sigmas must be either 0.5, 1.0, 2.0, 4.0, or 8.0")
             raise NotImplementedError
         return sigma2nside_map[sigma]
 
     def smooth(self, fg, sigma, chromatic):
-        print(f"smoothing with {sigma} deg, and chromatic {chromatic}")
+        if verbose: print(f"smoothing with {sigma} deg, and chromatic {chromatic}")
         fgsmooth = np.zeros_like(fg)
         for fi, f in enumerate(self.freqs):
             sigma_f = sigma * (10.0 / (f)) if chromatic else sigma
@@ -525,7 +527,7 @@ class FlowAnalyzerV2(NormalizingFlow):
         return fgsmooth
 
     def galaxy_cut(self, fg, b_min):
-        print(f"doing galcut for b_min={b_min} deg")
+        if verbose: print(f"doing galcut for b_min={b_min} deg")
         _, npix = fg.shape
         nside = np.sqrt(npix / 12).astype(int)
         col_min = np.pi / 2 - np.deg2rad(b_min)
@@ -592,7 +594,7 @@ class FlowAnalyzerV2(NormalizingFlow):
         assert self.args.chromatic == False
         gF = np.random.normal(0.0, self.gainFluctuationLevel, self.npix)
         self.gFtiled = np.tile(gF, (self.nfreq, 1))
-        print(
+        if verbose: print(
             f"getting base gainF map for gFLevel {self.gainFluctuationLevel} and sigma {self.sigma}"
         )
         self.gFsmooth = self.smooth(self.gFtiled, self.sigma, self.chromatic)
@@ -606,10 +608,10 @@ class FlowAnalyzerV2(NormalizingFlow):
             freqs, nu_rms=14, nu_min=16.4, A=0.04
         )
         if sigma == self.sigma:
-            print("multiplying gainF")
+            if verbose: print("multiplying gainF")
             gFresmooth = gFmap.copy()
         else:
-            print(f"resmoothing by {sigma} and multiplying gainF")
+            if verbose: print(f"resmoothing by {sigma} and multiplying gainF")
             gFresmooth = self.smooth(gFmap.copy(), sigma, chromatic=False)
         self.fgsmoothgF = fgsmooth.copy() * gFresmooth.copy()
         self.t21smoothgF = template[:, None] * gFresmooth.copy()
@@ -673,6 +675,7 @@ class Args:
         self.freqs = freqs
 
     def prettyprint(self):
+        print('Using the following args:')
         for arg in vars(self):
             val = str(getattr(self, arg))
             print(f"{arg:20s} {val:20s}")
