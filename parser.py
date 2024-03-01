@@ -54,3 +54,8 @@ def create_parser():
     parser.add_argument("--appendLik", type=str, default="", required=False)
 
     return parser
+
+def prettyprint(a):
+    for arg in vars(a):
+        val = str(getattr(a, arg))
+        print(f"{arg:20s} {val:20s}")

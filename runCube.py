@@ -12,16 +12,17 @@ import matplotlib.pyplot as plt
 ##---------------------------------------------------------------------------##
 # argparser block
 
-parser = parser.create_parser()
-args = parser.parse_args()
+argparser = parser.create_parser()
+args = argparser.parse_args()
 
 # must have --noisyT21 and --diffCombineSigma!!!
 args.noisyT21 = True
 args.diffCombineSigma = True
 
-args.appendLik = "_cube"
+if args.appendLik == "":
+    args.appendLik = "_cube"
 
-args.print()
+parser.prettyprint(args)
 
 ##---------------------------------------------------------------------------##
 
@@ -53,7 +54,7 @@ elif args.fgFITS == "gsm16.fits":
         flow.freqs, nu_rms=20, nu_min=67.5, A=0.130
     )
     cosmicdawn = True
-flow.set_t21(t21, include_noise=args.noisyT21)
+flow.set_t21(t21)
 if args.retrain:
     flow.train(
         flow.train_data, flow.validate_data, nocuda=False, savePath=fname, retrain=True
@@ -78,7 +79,7 @@ print(kwargs)
 samples1d, t21_vs1d = nf.get_t21vs1d(
     flow.freqs, npoints=2000, vs="A", cosmicdawn=cosmicdawn, **kwargs
 )
-t21_vsdata1d = flow.proj_t21(t21_vs1d, include_noise=True)
+t21_vsdata1d = flow.proj_t21(t21_vs1d)
 likelihood1d = flow.get_likelihood(
     t21_vsdata1d, args.freqFluctuationLevel, args.DA_factor
 )
@@ -116,7 +117,7 @@ for ivs, vs in enumerate(["W", "N"]):
     samples1d, t21_vs1d = nf.get_t21vs1d(
         flow.freqs, npoints=2000, vs=vs, cosmicdawn=cosmicdawn, **kwargs
     )
-    t21_vsdata1d = flow.proj_t21(t21_vs1d, include_noise=True)
+    t21_vsdata1d = flow.proj_t21(t21_vs1d)
     likelihood1d = flow.get_likelihood(
         t21_vsdata1d, args.freqFluctuationLevel, args.DA_factor
     )
@@ -155,7 +156,7 @@ print("getting 3D corner plot...")
 samples, t21_vs = nf.get_t21vs(
     flow.freqs, npoints=30, cosmicdawn=cosmicdawn, **kwargs3D
 )
-t21_vsdata = flow.proj_t21(t21_vs, include_noise=True)
+t21_vsdata = flow.proj_t21(t21_vs)
 likelihood = flow.get_likelihood(
     t21_vsdata, args.freqFluctuationLevel, args.DA_factor, debugfF=False
 )

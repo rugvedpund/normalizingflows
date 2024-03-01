@@ -1,7 +1,6 @@
 # 30 Aug 2022, Rugved Pund
 
 import torch
-from sinf import GIS
 import matplotlib.pyplot as plt
 import numpy as np
 import lusee
@@ -12,32 +11,67 @@ import os
 import corner
 
 # specify path to save/load models and likelihood results
-root = os.environ["NF_WORKDIR"]
+try:
+    root = os.environ["NF_WORKDIR"]
+except:
+    print('NF module uses the environment variable $NF_WORKDIR to look for fg fits files, models, likelihoods, etc.')
+    print('Please set it to something like "./dir/"')
+    print('Enter a temporary path below:')
+    root=os.path.abspath(input())
+    print('Using path:', root)
 
+class NormalizingFlow:
+    def __init__(self, nocuda, loadPath=""):
+        self.device = torch.device("cpu") if nocuda else torch.device("cuda")
+        try:
+            self.model = torch.load(loadPath).to(self.device)
+            self.nlayer = len(self.model.layer)
+            print("model loaded from ", loadPath)
+        except FileNotFoundError:
+            print("no file found, need to train")
+        self.precompute_data_after = dict()
 
-def plot_corner(args):
-    """plot corner plots for all parameters"""
-    samples, likelihood = get_samplesAndLikelihood(args, "all")
-    if args.fgFITS == "ulsa.fits":
-        amp = 40.0
-        truths = [amp, 14.0, 16.4]
-    if args.fgFITS == "gsm16.fits":
-        amp = 130.0
-        truths = [amp, 14.0, 16.4]
-    samples[:, 0] *= amp
-    fig = corner.corner(
-        samples,
-        weights=exp(likelihood),
-        labels=[r"$A$", r"$\nu_{\rm rms}$", r"$\nu_{\rm min}$"],
-        plot_datapoints=False,
-        truths=truths,
-        truth_color="gray",
-        levels=[1 - np.exp(-0.5), 1 - np.exp(-2)],
-        bins=50,
-        show_titles=True,
-        hist_kwargs={"density": True},
-    )
-    return fig
+    def train(
+        self,
+        train_data,
+        validate_data,
+        nocuda,
+        savePath,
+        retrain,
+        alpha=None,
+        delta_logp=np.inf,
+        verbose=False,
+    ):
+        """
+        data must be of shape (nsamples, ndim)
+        """
+        self.nsamples, self.ndim = train_data.shape
+        print("now training model with nsamples", self.nsamples, " of ndim", self.ndim)
+        self.train_data = self._toTensor(train_data)
+        self.validate_data = self._toTensor(validate_data)
+        if retrain:
+            from sinf import GIS
+            print("retraining...")
+            self.model = None
+        self.model = GIS.GIS(
+            self.train_data.clone(),
+            self.validate_data.clone(),
+            nocuda=nocuda,
+            alpha=alpha,
+            delta_logp=delta_logp,
+            verbose=verbose,
+        )
+        self.nlayer = len(self.model.layer)
+        print("Total number of iterations: ", len(self.model.layer))
+        torch.save(self.model, savePath)
+        print("model saved at", savePath)
+
+    def _toTensor(self, nparray):
+        return torch.from_numpy(nparray).float().to(self.device)
+
+    def _likelihood(self, data, end=None):
+        data = self._toTensor(data)
+        return self.model.evaluate_density(data, end=end)
 
 
 def exp(l, numpy=True):
@@ -236,83 +270,9 @@ def get_constraints(s, ll):
     # out['amp-']*=40.0
     return out
 
-
-def get_log(fname):
-    with open(fname) as f:
-        lines = f.readlines()
-    n = len(lines)
-    trainlogp, vallogp, iteration, best = np.zeros((4, n))
-    for il, l in enumerate(lines):
-        lsplit = l.split()
-        trainlogp[il] = lsplit[1]
-        vallogp[il] = lsplit[2]
-        iteration[il] = lsplit[-3]
-        best[il] = lsplit[-1]
-    return iteration, trainlogp, vallogp, best
-
-
-def get_nLayerBest(iteration, trainlogp, vallogp, best, delta_logp=10):
-    b = int(best[-1])
-    n = int(iteration[np.where(trainlogp - vallogp < delta_logp)][-1])
-    return min(n - 1, b - 1)
-
-
-class NormalizingFlow:
-    def __init__(self, nocuda, loadPath=""):
-        self.device = torch.device("cpu") if nocuda else torch.device("cuda")
-        try:
-            self.model = torch.load(loadPath).to(self.device)
-            self.nlayer = len(self.model.layer)
-            print("model loaded from ", loadPath)
-        except FileNotFoundError:
-            print("no file found, need to train")
-        self.precompute_data_after = dict()
-
-    def train(
-        self,
-        train_data,
-        validate_data,
-        nocuda,
-        savePath,
-        retrain,
-        alpha=None,
-        delta_logp=np.inf,
-        verbose=False,
-    ):
-        """
-        data must be of shape (nsamples, ndim)
-        """
-        self.nsamples, self.ndim = train_data.shape
-        print("now training model with nsamples", self.nsamples, " of ndim", self.ndim)
-        self.train_data = self._toTensor(train_data)
-        self.validate_data = self._toTensor(validate_data)
-        if retrain:
-            print("retraining...")
-            self.model = None
-        self.model = GIS.GIS(
-            self.train_data.clone(),
-            self.validate_data.clone(),
-            nocuda=nocuda,
-            alpha=alpha,
-            delta_logp=delta_logp,
-            verbose=verbose,
-        )
-        self.nlayer = len(self.model.layer)
-        print("Total number of iterations: ", len(self.model.layer))
-        torch.save(self.model, savePath)
-        print("model saved at", savePath)
-
-    def _toTensor(self, nparray):
-        return torch.from_numpy(nparray).float().to(self.device)
-
-    def _likelihood(self, data, end=None):
-        data = self._toTensor(data)
-        return self.model.evaluate_density(data, end=end)
-
-
 class FlowAnalyzerV2(NormalizingFlow):
     def __init__(self, loadPath, nocuda=False):
-        print("loading new NF.py!")
+        print("loading Normalizing Flow module...")
         super().__init__(loadPath=loadPath, nocuda=nocuda)
 
     def set_fg(self, args):
@@ -351,7 +311,8 @@ class FlowAnalyzerV2(NormalizingFlow):
         self.cosmicdawn = True if args.fgFITS == "gsm16.fits" else False
 
         print(f"loading foreground map {args.fgFITS}")
-        self.fg = fitsio.read(f"{root}{args.fgFITS}")
+        fgpath = os.path.join(root,args.fgFITS)
+        self.fg = fitsio.read(fgpath)
 
         # fg
         self.nfreq, self.npix = self.fg.shape
@@ -490,8 +451,8 @@ class FlowAnalyzerV2(NormalizingFlow):
         self.validate_data = self.data[ntrain:, :].copy()
         print(f"done! {self.train_data.shape=},{self.validate_data.shape=} ready")
 
-    def set_t21(self, t21, include_noise):
-        if include_noise:
+    def set_t21(self, t21):
+        if self.args.noisyT21:
             t21 += self.noise.mean(axis=1)
         if self.avgAdjacentFreqBins:
             print("combining adjacent freq bins for t21")
@@ -505,14 +466,16 @@ class FlowAnalyzerV2(NormalizingFlow):
         self.t21data = self.eve.T @ self.t21 / self.rms
         self.t21data = np.delete(self.t21data, self.nPCAarr)
         print(f"{self.t21data.shape=} ready")
+        print("ready to calculate likelihoods!")
 
-    def proj_t21(self, t21_vs, include_noise):
+    def proj_t21(self, t21_vs):
+        include_noise=self.args.noisyT21
         assert t21_vs.shape == (self.nfreq, t21_vs.shape[1])
-        t21_noisy = (
-            t21_vs + self.noise.mean(axis=1)[:, None]
-            if include_noise
-            else np.zeros_like(t21_vs)
-        )
+        if include_noise:
+            t21_noisy = t21_vs + self.noise.mean(axis=1)[:,None]
+        else:
+            t21_noisy = t21_vs.copy()
+
         if self.avgAdjacentFreqBins:
             t21_noisy = (t21_noisy[::2, :] + t21_noisy[1::2, :]) / 2
         if self.diffCombineSigma:
@@ -520,7 +483,7 @@ class FlowAnalyzerV2(NormalizingFlow):
             t21cS[: self.nfreq, :] = t21_noisy.copy()
         else:
             t21cS = np.tile(t21_noisy, (self.nsigmas, 1))
-        print("Calculating likelihood for nfreqs,npoints = ", t21cS.shape)
+        print("Calculating likelihood for npoints = ", t21cS.shape[1])
         proj_t21 = (self.eve.T @ t21cS) / self.rms[:, None]
         proj_t21 = np.delete(proj_t21, self.nPCAarr, axis=0)
         return proj_t21
@@ -613,14 +576,14 @@ class FlowAnalyzerV2(NormalizingFlow):
                 self.freqs, a, w, n, cmb=cmb, cosmicdawn=self.cosmicdawn
             )
 
-        pt21vs = self.proj_t21(t21vs, include_noise=self.args.noisyT21)
+        pt21vs = self.proj_t21(t21vs)
         loglikelihood = self.get_likelihood(
             pt21vs, self.args.freqFluctuationLevel, self.args.DA_factor, debugfF=False
         )
         return samples, loglikelihood
 
     def get_likelihoodFromSamplesGAME(self, samples, cmb=False):
-        samples = np.array(samples).reshape((-1, 3))
+        assert samples.shape == (samples.shape[0], 3)
         _, loglikelihood = self.get_likelihoodFromSamples(samples, cmb=cmb)
         return loglikelihood
 
@@ -652,37 +615,6 @@ class FlowAnalyzerV2(NormalizingFlow):
         self.t21smoothgF = template[:, None] * gFresmooth.copy()
 
         return fgsmooth.copy() + self.fgsmoothgF + self.t21smoothgF
-
-
-class RandomWalker:
-    def __init__(self, walkerparams, nsteps, stepsizefactor=0.1):
-        self.nsteps = nsteps
-        self.walkerparams = walkerparams
-        self.steps = self.doSteps(stepsizefactor)
-
-    def doSteps(self, stepsizefactor):
-        self.steps = np.zeros((self.nsteps, 3))
-        self.steps[0, :] = [
-            self.walkerparams["astart"],
-            self.walkerparams["wstart"],
-            self.walkerparams["nstart"],
-        ]
-        for i in range(1, self.nsteps):
-            stepsize = np.array(
-                [
-                    self.walkerparams["amax"] - self.walkerparams["amin"],
-                    self.walkerparams["wmax"] - self.walkerparams["wmin"],
-                    self.walkerparams["nmax"] - self.walkerparams["nmin"],
-                ]
-            )
-            self.steps[i, :] = (
-                self.steps[i - 1, :] + np.random.normal(0, stepsizefactor, 3) * stepsize
-            )
-            for ivs, vs in enumerate(["A", "W", "N"]):
-                if self.steps[i, ivs] < 0.01:
-                    self.steps[i, ivs] = 0.01
-        return self.steps
-
 
 class Args:
     def __init__(
@@ -740,7 +672,8 @@ class Args:
         self.fgFITS = fgFITS
         self.freqs = freqs
 
-    def print(self):
-        for arg in vars(args):
-            val = str(getattr(args, arg))
+    def prettyprint(self):
+        for arg in vars(self):
+            val = str(getattr(self, arg))
             print(f"{arg:20s} {val:20s}")
+

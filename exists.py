@@ -3,10 +3,10 @@ from NormalizingFlow import get_fname
 from os import path
 from sys import exit
 
-parser = parser.create_parser()
-args = parser.parse_args()
+argparser = parser.create_parser()
+args = argparser.parse_args()
 
-args.print()
+parser.prettyprint(args)
 
 fname = get_fname(args)
 if path.exists(fname):

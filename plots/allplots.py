@@ -52,13 +52,13 @@ args.chromatic=False
 cd=nf.FlowAnalyzerV2(nf.get_fname(args))
 cd.set_fg(args)
 cdt21=lusee.MonoSkyModels.T_CosmicDawn_Scaled(cd.freqs,nu_rms=20,nu_min=67.5,A=0.130)
-cd.set_t21(cdt21,include_noise=True)
+cd.set_t21(cdt21)
 args.fgFITS='ulsa.fits'
 args.freqs='1 51'
 da=nf.FlowAnalyzerV2(nf.get_fname(args))
 da.set_fg(args)
 dat21=lusee.MonoSkyModels.T_DarkAges_Scaled(da.freqs,nu_rms=14,nu_min=16.4,A=0.04)
-da.set_t21(dat21,include_noise=True)
+da.set_t21(dat21)
 # %%
 plt.figure(figsize=(5,5))
 cfgmean,cfg,ct21='C0','darkcyan','C1'
