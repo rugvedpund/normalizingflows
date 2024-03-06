@@ -20,9 +20,9 @@ parser.prettyprint(args)
 # setup corner plot params
 
 cosmicdawn = True if args.fgFITS == "gsm16.fits" else False
-truths = [130, 20, 67.5] if cosmicdawn else [40, 14, 16.4]
+truths = [1, 20, 67.5] if cosmicdawn else [1, 14, 16.4]
 ranges = (
-    [(125, 135), (19, 21), (66, 69)] if cosmicdawn else [(30, 80), (13.5, 16), (13, 18)]
+    [(0,5), (19, 21), (66, 69)] if cosmicdawn else [(0, 10), (1, 40), (1, 40)]
 )
 fg = "CD" if cosmicdawn else "DA"
 labels = {
@@ -33,10 +33,13 @@ labels = {
 cornerkwargs = {
     "show_titles": True,
     "levels": [1 - np.exp(-0.5), 1 - np.exp(-2)],
-    "bins": 40,
+    "bins": 50,
     "range": ranges,
     "labels": [r"A", r"$\nu_{\rm rms}$", r"$\nu_{\rm min}$"],
-    "plot_datapoints": True,
+    # "plot_datapoints": True,
+    # "no_fill_contours":True,
+    # "plot_contours":False,
+    # "pcolor_kwargs":{"cmap":"viridis"},
     # "hist_kwargs":{"density": True},
 }
 suptitle=rf"{fg} for {labels[args.combineSigma]},"
@@ -48,7 +51,6 @@ suptitle+='\n'
 # plot samples and likelihoods
 
 s, ll = nf.get_samplesAndLikelihood(args, plot="all")
-s[:, 0] *= truths[0]
 fig = corner.corner(s, weights=nf.exp(ll), **cornerkwargs)
 corner.overplot_lines(fig, truths, color="k", ls="--", lw=1)
 plt.suptitle(suptitle)

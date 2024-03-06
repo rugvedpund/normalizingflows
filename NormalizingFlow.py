@@ -16,13 +16,10 @@ verbose = True
 try:
     root = os.environ["NF_WORKDIR"]
 except:
-    print(
-        "NF module uses the environment variable $NF_WORKDIR to look for fg fits files, models, likelihoods, etc."
-    )
-    print('Please set it to something like "./dir/"')
-    print("Enter a temporary path below:")
-    root = os.path.abspath(input())
-    print("Using path:", root)
+    root = os.path.abspath("./")
+    print("Now using the current dir", root)
+
+##---------------------------------------------------------------------------##
 
 
 class NormalizingFlow:
@@ -36,7 +33,6 @@ class NormalizingFlow:
         except FileNotFoundError:
             if verbose:
                 print("no file found, need to train")
-        self.precompute_data_after = dict()
 
     def train(
         self,
@@ -423,8 +419,9 @@ class FlowAnalyzerV2(NormalizingFlow):
         return samples, loglikelihood
 
     def get_likelihoodFromSamplesGAME(self, samples, cmb=False):
-        assert samples.shape == (samples.shape[0], 3)
-        _, loglikelihood = self.get_likelihoodFromSamples(samples, cmb=cmb)
+        arr = np.array(samples) # need this for game.py
+        assert arr.shape == (arr.shape[0], 3)
+        _, loglikelihood = self.get_likelihoodFromSamples(arr, cmb=cmb)
         return loglikelihood
 
     def getGainFluctuationMap(self):
