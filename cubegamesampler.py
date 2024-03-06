@@ -14,7 +14,7 @@ class CubeGame:
         self.likefunc = likefunc
         self.limits = limits
         self.ndim = len(limits)
-        self.N1 = 50
+        self.N1 = 20
         self.axes = np.array(
             [np.linspace(ximin, ximax, self.N1) for ximin, ximax in self.limits]
         )
@@ -33,8 +33,10 @@ class CubeGame:
         print('for top', self.nGame, 'samples\n', self.topnsamples)
 
         for i, sample in enumerate(self.topnsamples):
+            print(f'{"--"*40}')
             print('running game for', sample)
             ga = gamesampler.Game(self.likefunc, sample, sigreg=[0.7] * self.ndim)
+            ga.fixedcov = True
             ga.N1 = 1000
             ga.mineffsamp = 1000
             ga.run()

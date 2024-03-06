@@ -23,7 +23,7 @@ args.noisyT21 = True
 args.diffCombineSigma = True
 
 if args.appendLik == "":
-    args.appendLik = "_game"
+    args.appendLik = "_cubegame"
 
 parser.prettyprint(args)
 
@@ -67,8 +67,67 @@ if args.retrain:
 ##---------------------------------------------------------------------------##
 # main sampler block
 
-cg = cubegamesampler.CubeGame(flow.get_likelihoodFromSamplesGAME,[(0,10),(10,20),(10,20)])
+cg = cubegamesampler.CubeGame(
+    flow.get_likelihoodFromSamplesGAME, [(0.01, 10), (1, 30), (1, 30)]
+)
 cg.run()
-breakpoint()
 
 ##---------------------------------------------------------------------------##
+# save block
+
+samples = np.vstack([[sa.pars for sa in ga.sample_list] for ga in cg.Games])
+ww = np.hstack([[sa.we for sa in ga.sample_list] for ga in cg.Games])
+wsumsa = ww / ww.sum()
+
+
+cornerkwargs = {
+    "show_titles": True,
+    "levels": [1 - np.exp(-0.5), 1 - np.exp(-2)],
+    "bins": 50,
+    "range": [(0.8, 1.2), (18, 22), (65, 70)] if cosmicdawn
+    # else [(0.8, 1.2), (12, 16), (15.6, 17)],
+    else [(0.1, 10), (1, 25), (1, 40)],
+    "labels": [r"A", r"$\nu_{\rm rms}$", r"$\nu_{\rm min}$"],
+    "truths": [1, 20, 67.5] if cosmicdawn else [1.0, 14.0, 16.4],
+    "plot_datapoints": True,
+}
+
+
+def plotel(G):
+    global fig
+    cov = G.cov
+    print(G.cov)
+    val, vec = np.linalg.eig(cov)
+    vec = vec.T
+
+    vec[0] *= np.sqrt(np.real(val[0]))
+    vec[1] *= np.sqrt(np.real(val[1]))
+    print(vec[0], "A")
+    print(vec[1], "B")
+    corner.overplot_points(fig, G.mean[None], c="b", marker="o", ms=1.0)
+    corner.overplot_points(
+        fig, [G.mean - vec[0], G.mean + vec[0]], c="r", marker="", linestyle="-", lw=0.5
+    )
+    corner.overplot_points(
+        fig, [G.mean - vec[1], G.mean + vec[1]], c="r", marker="", linestyle="-", lw=0.5
+    )
+    corner.overplot_points(
+        fig, [G.mean - vec[2], G.mean + vec[2]], c="r", marker="", linestyle="-", lw=0.5
+    )
+
+fig = corner.corner(samples, weights=wsumsa, **cornerkwargs)
+for ga in cg.Games:
+    for G in ga.Gausses:
+        plotel(G)
+plt.suptitle("Cube Game Samples")
+cname = nf.get_lname(args, plot="corner")
+cname += ".pdf"
+plt.savefig(cname, dpi=300)
+
+lname = nf.get_lname(args, plot="all")
+print(f"saving corner likelihood results to {lname}")
+np.savetxt(
+    lname,
+    np.column_stack([samples, np.log(ww)]),
+    header="amp,width,numin,loglikelihood",
+)

@@ -126,8 +126,10 @@ wsumsa = ww / ww.sum()
 fig = corner.corner(samples, weights=wsumsa, **cornerkwargs)
 for G in ga.Gausses:
     plotel(G)
-plt.suptitle("Weighted Samples")
-plt.show()
+plt.suptitle("GameX Samples")
+cname = nf.get_lname(args, plot="corner")
+cname += ".pdf"
+plt.savefig(cname, dpi=300)
 
 breakpoint()
 lname = nf.get_lname(args, plot="all")

@@ -23,3 +23,9 @@ if path.exists(lname):
 else:
     print("\n\nno likelihood")
 
+cname = get_lname(args,plot='corner')
+if path.exists(cname):
+    print("\n\ncorner plot found")
+    print(cname)
+else:
+    print("\n\nno corner plot")

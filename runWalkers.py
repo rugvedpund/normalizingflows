@@ -127,7 +127,7 @@ ranges = (
 )
 truths = [1.0, 20.0, 67.5] if cosmicdawn else [1.0, 14.0, 16.4]
 # plot3D(samples,loglikelihoods,range=ranges,plot_datapoints=True,bins=100,truths=truths)
-plt.show()
+# plt.show()
 
 lname = nf.get_lname(args, plot="all")
 print(f"saving corner likelihood results to {lname}")
