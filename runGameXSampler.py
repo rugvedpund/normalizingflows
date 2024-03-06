@@ -1,7 +1,7 @@
 # Example:
 # python runGameSampler.py --noise 0.0 --combineSigma '4 6' --freqs '1 51' --fgFITS 'ulsa.fits'
 
-import gamesampler
+import gamexsampler
 import numpy as np
 import torch
 import fitsio
@@ -23,7 +23,7 @@ args.noisyT21 = True
 args.diffCombineSigma = True
 
 if args.appendLik == "":
-    args.appendLik = "_game"
+    args.appendLik = "_gamex"
 
 parser.prettyprint(args)
 
@@ -68,8 +68,7 @@ if args.retrain:
 # main sampler block
 
 start = [1, 20, 67.5] if cosmicdawn else [1, 14, 16.4]
-breakpoint()
-ga = gamesampler.Game(flow.get_likelihoodFromSamplesGAME, start, sigreg=[0.7, 0.7, 0.7])
+ga = gamexsampler.Game(flow.get_likelihoodFromSamplesGAME, start, sigreg=[0.7, 0.7, 0.7])
 ga.N1 = 1000
 ga.mineffsamp = 5000
 ga.run()
@@ -111,10 +110,10 @@ cornerkwargs = {
     "range": [(0.8, 1.2), (18, 22), (65, 70)]
     if cosmicdawn
     # else [(0.8, 1.2), (12, 16), (15.6, 17)],
-    else [(0.1, 10), (1, 25), (1, 40)],
+    else [(0, 10), (12, 24), (8, 18)],
     "labels": [r"A", r"$\nu_{\rm rms}$", r"$\nu_{\rm min}$"],
     "truths": [1, 20, 67.5] if cosmicdawn else [1.0, 14.0, 16.4],
-    "plot_datapoints": True,
+    "plot_datapoints": False,
 }
 
 # # just samples
