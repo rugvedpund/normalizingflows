@@ -4,11 +4,9 @@
 import cubegamesampler
 import numpy as np
 import torch
-import fitsio
 import NormalizingFlow as nf
 import lusee
 import parser
-import os
 import corner
 import matplotlib.pyplot as plt
 
@@ -75,9 +73,10 @@ cg.run()
 ##---------------------------------------------------------------------------##
 # save block
 
-samples = np.vstack([[sa.pars for sa in ga.sample_list] for ga in cg.Games])
-ww = np.hstack([[sa.we for sa in ga.sample_list] for ga in cg.Games])
-wsumsa = ww / ww.sum()
+samples = cg.samples
+loglikelihoods = cg.loglikelihoods
+breakpoint()
+
 
 
 cornerkwargs = {
@@ -115,7 +114,7 @@ def plotel(G):
         fig, [G.mean - vec[2], G.mean + vec[2]], c="r", marker="", linestyle="-", lw=0.5
     )
 
-fig = corner.corner(samples, weights=wsumsa, **cornerkwargs)
+fig = corner.corner(samples, weights=nf.exp(loglikelihoods), **cornerkwargs)
 for ga in cg.Games:
     for G in ga.Gausses:
         plotel(G)
@@ -128,6 +127,6 @@ lname = nf.get_lname(args, plot="all")
 print(f"saving corner likelihood results to {lname}")
 np.savetxt(
     lname,
-    np.column_stack([samples, np.log(ww)]),
+    np.column_stack([samples, loglikelihoods]),
     header="amp,width,numin,loglikelihood",
 )

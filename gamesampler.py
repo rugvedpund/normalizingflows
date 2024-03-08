@@ -39,6 +39,7 @@ class Gaussian:
 
 class Game:
     def __init__ (self, likefuncmany, par0, sigreg=0.0):
+        print('Starting Game Sampler')
         random.seed(10)
         self.like=likefuncmany ## returns log like
         self.sigreg=array(sigreg)
@@ -118,7 +119,7 @@ class Game:
 
                         
     def getcov(self, around):
-        N=self.N
+        N=self.N # number of dimensions
 
         if (self.fixedcov):
             cov=zeros((N,N))

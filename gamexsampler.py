@@ -40,6 +40,7 @@ class Gaussian:
 
 class Game:
     def __init__ (self, likefunc, par0, sigreg=0.0):
+        print('Starting GameX Sampler')
         random.seed(10)
         self.like=likefunc ## returns log like
         self.sigreg=array(sigreg)
