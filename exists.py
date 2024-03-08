@@ -23,7 +23,7 @@ if path.exists(lname):
 else:
     print("\n\nno likelihood")
 
-cname = get_lname(args,plot='corner')
+cname = get_lname(args,plot='corner')+".pdf"
 if path.exists(cname):
     print("\n\ncorner plot found")
     print(cname)
