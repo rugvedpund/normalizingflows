@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 import fitsio
 import NormalizingFlow as nf
 import lusee
@@ -17,7 +18,8 @@ args = argparser.parse_args()
 args.noisyT21 = True
 args.diffCombineSigma = True
 
-args.appendLik = "_cube"
+if args.appendLik == "":
+    args.appendLik = "_cmb"
 
 parser.prettyprint(args)
 
@@ -50,17 +52,8 @@ if args.retrain:
 ##---------------------------------------------------------------------------##
 # 1D
 npoints = 1000
-amin,amax=0.1,10000.0
+amin, amax = 0.1, 10000.0
 amp = np.logspace(np.log10(amin), np.log10(amax), num=npoints)
-
-
-
-
-
-
-
-
-
 
 kwargs = {
     "amin": 0.1,
@@ -74,7 +67,7 @@ kwargs = {
 
 vs = "A"
 print(f"getting 1d likelihood for {vs}...")
-samples1d, t21_vs1d = nf.get_t21vs1d(npoints, vs, cmb=True, **kwargs)
+samples1d, t21_vs1d = nf.get_t21vs1d(flow.freqs, npoints, vs, cmb=True, **kwargs)
 print(t21_vs1d)
 t21vsdata1d = flow.proj_t21(t21_vs1d)
 likelihood1d = flow.get_likelihood(
@@ -88,15 +81,17 @@ np.savetxt(
     header="amp,width,numin,loglikelihood",
 )
 
-# s,ll=nf.get_samplesAndLikelihood(args,plot='A')
-# quantiles=corner.core.quantile(s[:,0],[0.32,0.5,0.68,0.95],weights=nf.exp(ll))
-# dq=quantiles[2]-quantiles[0]
-# maxll=s[np.argmax(ll),0]
+# s, ll = nf.get_samplesAndLikelihood(args, plot="A")
+# quantiles = corner.core.quantile(s[:, 0], [0.32, 0.5, 0.68, 0.95], weights=nf.exp(ll))
+# dq = quantiles[2] - quantiles[0]
+# maxll = s[np.argmax(ll), 0]
 # for x in quantiles:
-#     plt.axvline(2.718*x,c='k',alpha=0.5,lw=0.5)
+#     plt.axvline(2.718 * x, c="k", alpha=0.5, lw=0.5)
 # # plt.axvline(40,color='k')
-# plt.plot(2.718*s,nf.exp(ll))
-# plt.xscale('log')
+# plt.plot(2.718 * s, nf.exp(ll))
+# plt.xscale("log")
 # # plt.xlim(3e3,5e3)
-# plt.title(f'Amplitude {2.718*quantiles[1]:.3f} +/-{2.718*dq:.3f} K, <{2.718*quantiles[3]:.3f} K 95% CL, max likelihood {2.718*maxll:.3f} K')
+# plt.title(
+#     f"Amplitude {2.718*quantiles[1]:.3f} +/-{2.718*dq:.3f} K, /< {2.718*quantiles[3]:.3f} K 95/% CL, max likelihood {2.718*maxll:.3f} K"
+# )
 # plt.show()
