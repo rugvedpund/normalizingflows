@@ -422,11 +422,17 @@ class FlowAnalyzerV2(NormalizingFlow):
         arr = np.array(samples) # need this for game.py
         assert arr.shape == (arr.shape[0], 3)
 
-        #apply sensible prior
-        if np.all(arr<priorlow) or np.all(arr>priorhigh):
-            return -np.inf
 
         _, loglikelihood = self.get_likelihoodFromSamples(arr, cmb=cmb)
+        
+        #apply prior
+        print('applying priors: low =',priorlow, ', high =',priorhigh)
+        abovelowidx = (arr>priorlow).all(axis=1)
+        belowhighidx = (arr<priorhigh).all(axis=1)
+        inprioridx = np.logical_and(abovelowidx,belowhighidx)
+        outprioridx = np.logical_not(inprioridx)
+        loglikelihood[outprioridx]=-1e9 #assign a super low loglikelihood
+
         return loglikelihood
 
     def get_likelihoodFromSampleEMCEE(self,sample):

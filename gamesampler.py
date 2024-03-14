@@ -112,7 +112,7 @@ class Game:
                 flist.append(sa)
                 
         self.sample_list=flist
-        print("#G=",len(Gausses), "maxlike=",maxlike,"wemax=",wemax,"effsamp=",effsamp)
+        print("#G=",len(Gausses),"around=",Gausses[-1].mean, "maxlike=",maxlike,"wemax=",wemax,"effsamp=",effsamp)
         self.effsamp=effsamp
         self.wemax=wemax
         return parmaxw
