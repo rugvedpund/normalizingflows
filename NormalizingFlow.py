@@ -418,7 +418,7 @@ class FlowAnalyzerV2(NormalizingFlow):
         )
         return samples, loglikelihood
 
-    def get_likelihoodFromSamplesGAME(self, samples, cmb=False, priorlow=np.array([0.01,1,1]), priorhigh=np.array([10,40,40])):
+    def get_likelihoodFromSamplesGAME(self, samples, cmb=False, priorlow=[0.01,1,1], priorhigh=[10,40,40]):
         arr = np.array(samples) # need this for game.py
         assert arr.shape == (arr.shape[0], 3)
 

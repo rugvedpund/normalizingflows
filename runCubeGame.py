@@ -65,18 +65,21 @@ if args.retrain:
 ##---------------------------------------------------------------------------##
 # main sampler block
 
-cg = cubegamesampler.CubeGame(
-    flow.get_likelihoodFromSamplesGAME, [(0.01, 10), (1, 30), (1, 30)]
-)
-cg.run()
+
+def like(x):
+    return flow.get_likelihoodFromSamplesGAME(
+        x, priorlow=[0.01, 1, 1], priorhigh=[10, 40, 40]
+    )
+
+cg = cubegamesampler.CubeGame(like, [(0.01, 10), (1, 30), (1, 30)])
+
+cg.run(nGame=10)
 
 ##---------------------------------------------------------------------------##
 # save block
 
 samples = cg.samples
 loglikelihoods = cg.loglikelihoods
-breakpoint()
-
 
 
 cornerkwargs = {
@@ -85,7 +88,7 @@ cornerkwargs = {
     "bins": 50,
     "range": [(0.8, 1.2), (18, 22), (65, 70)] if cosmicdawn
     # else [(0.8, 1.2), (12, 16), (15.6, 17)],
-    else [(0.1, 10), (1, 25), (1, 40)],
+    else [(0.1, 10), (1, 25), (1, 30)],
     "labels": [r"A", r"$\nu_{\rm rms}$", r"$\nu_{\rm min}$"],
     "truths": [1, 20, 67.5] if cosmicdawn else [1.0, 14.0, 16.4],
     "plot_datapoints": True,
@@ -114,6 +117,7 @@ def plotel(G):
         fig, [G.mean - vec[2], G.mean + vec[2]], c="r", marker="", linestyle="-", lw=0.5
     )
 
+
 fig = corner.corner(samples, weights=nf.exp(loglikelihoods), **cornerkwargs)
 for ga in cg.Games:
     for G in ga.Gausses:
@@ -121,6 +125,7 @@ for ga in cg.Games:
 plt.suptitle("Cube Game Samples")
 cname = nf.get_lname(args, plot="corner")
 cname += ".pdf"
+print(f"saving corner plot pdf to {cname}")
 plt.savefig(cname, dpi=300)
 
 lname = nf.get_lname(args, plot="all")
