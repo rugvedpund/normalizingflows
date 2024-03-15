@@ -68,11 +68,11 @@ class Game:
             
             if (self.wemax<self.tweight):
                 done=True
+            if (self.effsamp<self.mineffsamp):
+                done=False
             if (len(self.Gausses)>=self.maxiter):
                 print("Max iter exceeded")
                 done=True
-            if (self.effsamp<self.mineffsamp):
-                done=False
             
     def gausses_eval(self,sam):
         if len(sam.glikes)!=len(self.Gausses):
