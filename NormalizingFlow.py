@@ -418,10 +418,9 @@ class FlowAnalyzerV2(NormalizingFlow):
         )
         return samples, loglikelihood
 
-    def get_likelihoodFromSamplesGAME(self, samples, cmb=False, priorlow=[0.01,1,1], priorhigh=[10,40,40]):
+    def get_likelihoodFromSamplesGAME(self, samples, cmb=False, priorlow=[0.01,1,1], priorhigh=[10,40,40], llblowupfactor=1.0):
         arr = np.array(samples) # need this for game.py
         assert arr.shape == (arr.shape[0], 3)
-
 
         _, loglikelihood = self.get_likelihoodFromSamples(arr, cmb=cmb)
         
@@ -432,6 +431,10 @@ class FlowAnalyzerV2(NormalizingFlow):
         inprioridx = np.logical_and(abovelowidx,belowhighidx)
         outprioridx = np.logical_not(inprioridx)
         loglikelihood[outprioridx]=-1e9 #assign a super low loglikelihood
+
+        #apply loglikelihood blowupfactor
+        print('blowing up likelihoods by ',llblowupfactor)
+        loglikelihood/=llblowupfactor
 
         return loglikelihood
 

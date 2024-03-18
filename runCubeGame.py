@@ -68,12 +68,13 @@ if args.retrain:
 
 def like(x):
     return flow.get_likelihoodFromSamplesGAME(
-        x, priorlow=[0.01, 1, 1], priorhigh=[10, 40, 40]
+        x, priorlow=[0.01, 1, 1], priorhigh=[10, 40, 40],
+        llblowupfactor=3.0
     )
 
 cg = cubegamesampler.CubeGame(like, [(0.01, 10), (1, 30), (1, 30)])
 
-cg.run(nGame=10)
+cg.run(nGame=5)
 
 ##---------------------------------------------------------------------------##
 # save block
