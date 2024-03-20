@@ -22,7 +22,9 @@ parser.prettyprint(args)
 cosmicdawn = True if args.fgFITS == "gsm16.fits" else False
 truths = [1, 20, 67.5] if cosmicdawn else [1, 14, 16.4]
 ranges = (
-    [(0,5), (19, 21), (66, 69)] if cosmicdawn else [(0, 6), (10, 30), (5, 20)]
+    # [(0,5), (19, 21), (66, 69)] if cosmicdawn else [(0, 10), (1, 30), (1, 30)]
+    [(0,5), (19, 21), (66, 69)] if cosmicdawn else [(0, 2), (10, 20), (10, 20)]
+    # [(0,5), (19, 21), (66, 69)] if cosmicdawn else [(0, 2), (1, 30), (1, 30)]
 )
 fg = "CD" if cosmicdawn else "DA"
 labels = {
@@ -33,7 +35,7 @@ labels = {
 cornerkwargs = {
     "show_titles": True,
     "levels": [1 - np.exp(-0.5), 1 - np.exp(-2)],
-    "bins": 40,
+    "bins": 60,
     "range": ranges,
     "labels": [r"A", r"$\nu_{\rm rms}$", r"$\nu_{\rm min}$"],
     "plot_datapoints": True,
@@ -50,6 +52,7 @@ suptitle+='\n'
 
 ##---------------------------------------------------------------------------##
 # plot samples and likelihoods
+
 
 s, ll = nf.get_samplesAndLikelihood(args, plot="all")
 fig = corner.corner(s, weights=nf.exp(ll), **cornerkwargs)

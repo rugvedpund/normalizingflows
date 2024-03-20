@@ -37,8 +37,9 @@ class CubeGame:
             print('running game for', sample)
             ga = gamesampler.Game(self.likefunc, sample, sigreg=[0.9] * self.ndim)
             ga.fixedcov = False
-            ga.N1 = 100
+            ga.N1 = 1000
             ga.mineffsamp = 100
+            ga.maxiter=50
             ga.run()
             print('finished game', i)
             self.Games.append(ga)

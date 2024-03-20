@@ -39,6 +39,7 @@ torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
 
 fname = nf.get_fname(args)
+breakpoint()
 
 print(f"loading flow from {fname}")
 flow = nf.FlowAnalyzerV2(nocuda=False, loadPath=fname)
@@ -68,9 +69,9 @@ if args.retrain:
 
 def like(x):
     return flow.get_likelihoodFromSamplesGAME(
-        x, priorlow=[0.01, 1, 1], priorhigh=[10, 40, 40],
-        llblowupfactor=3.0
+        x, priorlow=[0.01, 10, 10], priorhigh=[2, 20, 20], llblowupfactor=1.0
     )
+
 
 cg = cubegamesampler.CubeGame(like, [(0.01, 10), (1, 30), (1, 30)])
 
