@@ -625,7 +625,7 @@ def get_fname(args):
 def get_lname(args, plot):
     """for saving likelihood results"""
     if args.old: print('using old likelihood')
-    lname = get_fname(args, args.old)
+    lname = get_fname(args)
     if args.appendLik:
         lname += args.appendLik if args.old else f"like{args.appendLik}"
 
