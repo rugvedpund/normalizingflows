@@ -597,7 +597,8 @@ def get_t21vs1d(freqs, npoints, vs, cmb=False, cosmicdawn=False, **kwargs):
     return samples, t21_vs
 
 
-def get_fname(args, old=False):
+def get_fname(args):
+    if args.old: print('using old model')
     """for saving model after training"""
     cS = ",".join(args.combineSigma.split())
     pca = ",".join(args.nPCA.split())
@@ -616,30 +617,30 @@ def get_fname(args, old=False):
         fname += args.append
     if args.nPCA:
         fname += f"_nPCA{pca}"
-    if not old:
+    if not args.old:
         fname += f"_freqs{fqs}"
     return fname
 
 
-def get_lname(args, plot, old=False):
+def get_lname(args, plot):
     """for saving likelihood results"""
-    lname = get_fname(args, old)
+    if args.old: print('using old likelihood')
+    lname = get_fname(args, args.old)
     if args.appendLik:
-        lname += args.appendLik if old else f"like{args.appendLik}"
+        lname += args.appendLik if args.old else f"like{args.appendLik}"
 
     lname += f"_noisyT21{args.noisyT21}_vs{plot}_DAfactor{args.DA_factor}_freqFluctuationLevel{args.freqFluctuationLevel}"
-    if old:
+    if args.old:
         paths = lname.split("/")
         paths.insert(6, "corner")
         lname = "/".join(paths)
     return lname
 
 
-def get_samplesAndLikelihood(args, plot, verbose=False, old=False):
-    lname = get_lname(args, plot, old)
+def get_samplesAndLikelihood(args, plot, verbose=False):
+    lname = get_lname(args, plot)
     if verbose:
-        if verbose:
-            print(f"loading corner likelihood results from {lname}")
+        print(f"loading corner likelihood results from {lname}")
     f = np.loadtxt(lname, unpack=True)
     likelihood = f[-1]
     samples = f[:-1].T

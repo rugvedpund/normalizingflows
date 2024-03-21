@@ -67,7 +67,7 @@ class Args:
         for arg in vars(self):
             print(arg, getattr(self, arg))
 
-    def get_fname(self,old=False):
+    def get_fname(self):
         """for saving model after training"""
         cS=','.join(self.combineSigma.split())
         pca=','.join(self.nPCA.split())
@@ -82,22 +82,22 @@ class Args:
         if self.gainFluctuationLevel is not None: fname+=f'_gainFluctuation{self.gainFluctuationLevel}_gFdebug{self.gFdebug}'
         if self.append: fname+=self.append
         if self.nPCA: fname+=f'_nPCA{pca}'
-        if not old: fname+=f'_freqs{fqs}'
+        if not args.old: fname+=f'_freqs{fqs}'
         return fname
 
-    def get_lname(self,plot,old=False):
+    def get_lname(self,plot):
         """for saving likelihood results"""
-        lname=self.get_fname(self,old)
+        lname=self.get_fname(self)
         if self.appendLik: lname+=f'like{self.appendLik}'
         lname+=f'_noisyT21{self.noisyT21}_vs{plot}_DAfactor{self.DA_factor}_freqFluctuationLevel{self.freqFluctuationLevel}'
-        if old: 
+        if self.old: 
             paths=lname.split('/')
             paths.insert(6,'corner')
             lname='/'.join(paths)
         return lname
 
-    def get_samplesAndLikelihood(self,plot,verbose=False,old=False):
-        lname=self.get_lname(self,plot,old)
+    def get_samplesAndLikelihood(self,plot,verbose=False):
+        lname=self.get_lname(self,plot)
         if verbose: print(f'loading corner likelihood results from {lname}')
         f=np.loadtxt(lname,unpack=True)
         likelihood=f[-1]

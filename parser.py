@@ -52,8 +52,10 @@ def create_parser():
 
     parser.add_argument("--retrain", action="store_true")
     parser.add_argument("--appendLik", type=str, default="", required=False)
+    parser.add_argument("--old", action="store_true")
 
     return parser
+
 
 def prettyprint(a):
     for arg in vars(a):
