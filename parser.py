@@ -53,11 +53,34 @@ def create_parser():
     parser.add_argument("--retrain", action="store_true")
     parser.add_argument("--appendLik", type=str, default="", required=False)
     parser.add_argument("--old", action="store_true")
+    parser.add_argument("--llblowupfactor",type=float, default=1.0)
 
     return parser
 
 
-def prettyprint(a):
-    for arg in vars(a):
-        val = str(getattr(a, arg))
+def prettyprint(args):
+    print("Using the following args:")
+    for arg in vars(args):
+        val = str(getattr(args, arg))
         print(f"{arg:20s} {val:20s}")
+    print("--" * 40, "\n")
+
+
+def argstostring(args):
+    out = ""
+    for arg in vars(args):
+        if arg in [
+            "subsample_factor",
+            "noPCA",
+            "subsampleSigma",
+            "noisyT21",
+            "gFdebug",
+            "nPCA",
+            "diffCombineSigma",
+            "retrain",
+            "avgAdjacentFreqBins",
+        ]:
+            continue
+        val = str(getattr(args, arg))
+        out += f"{arg:20s} {val:20s}\n"
+    return out

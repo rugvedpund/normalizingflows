@@ -33,6 +33,7 @@ class NormalizingFlow:
         except FileNotFoundError:
             if verbose:
                 print("no file found, need to train")
+        print("--" * 40, "\n")
 
     def train(
         self,
@@ -58,8 +59,7 @@ class NormalizingFlow:
         if retrain:
             from sinf import GIS
 
-            if verbose:
-                print("retraining...")
+            print("retraining...")
             self.model = None
         self.model = GIS.GIS(
             self.train_data.clone(),
@@ -70,11 +70,9 @@ class NormalizingFlow:
             verbose=verbose,
         )
         self.nlayer = len(self.model.layer)
-        if verbose:
-            print("Total number of iterations: ", len(self.model.layer))
+        print("Total number of iterations: ", len(self.model.layer))
         torch.save(self.model, savePath)
-        if verbose:
-            print("model saved at", savePath)
+        print("model saved at", savePath)
 
     def _toTensor(self, nparray):
         return torch.from_numpy(nparray).float().to(self.device)
@@ -298,7 +296,7 @@ class FlowAnalyzerV2(NormalizingFlow):
         if verbose:
             print(f"{self.t21data.shape=} ready")
         if verbose:
-            print("ready to calculate likelihoods!")
+            print("ready to train/calculate likelihoods!")
 
     def proj_t21(self, t21_vs):
         include_noise = self.args.noisyT21
@@ -418,28 +416,30 @@ class FlowAnalyzerV2(NormalizingFlow):
         )
         return samples, loglikelihood
 
-    def get_likelihoodFromSamplesGAME(self, samples, cmb=False, priorlow=[0.01,1,1], priorhigh=[10,40,40], llblowupfactor=1.0):
-        arr = np.array(samples) # need this for game.py
+    def get_likelihoodFromSamplesGAME(
+        self, samples, cmb=False, priorlow=[0.01, 1, 1], priorhigh=[10, 40, 40]
+    ):
+        arr = np.array(samples)  # need this for game.py
         assert arr.shape == (arr.shape[0], 3)
 
         _, loglikelihood = self.get_likelihoodFromSamples(arr, cmb=cmb)
-        
-        #apply prior
-        print('applying priors: low =',priorlow, ', high =',priorhigh)
-        abovelowidx = (arr>priorlow).all(axis=1)
-        belowhighidx = (arr<priorhigh).all(axis=1)
-        inprioridx = np.logical_and(abovelowidx,belowhighidx)
-        outprioridx = np.logical_not(inprioridx)
-        loglikelihood[outprioridx]=-1e9 #assign a super low loglikelihood
 
-        #apply loglikelihood blowupfactor
-        print('blowing up likelihoods by ',llblowupfactor)
-        loglikelihood/=llblowupfactor
+        # apply prior
+        print("applying priors: low =", priorlow, ", high =", priorhigh)
+        abovelowidx = (arr > priorlow).all(axis=1)
+        belowhighidx = (arr < priorhigh).all(axis=1)
+        inprioridx = np.logical_and(abovelowidx, belowhighidx)
+        outprioridx = np.logical_not(inprioridx)
+        loglikelihood[outprioridx] = -1e9  # assign a super low loglikelihood
+
+        # apply loglikelihood blowupfactor
+        print("blowing up likelihoods by ", self.args.llblowupfactor)
+        loglikelihood /= self.args.llblowupfactor
 
         return loglikelihood
 
-    def get_likelihoodFromSampleEMCEE(self,sample):
-        arr = np.array(sample)[None,:]
+    def get_likelihoodFromSampleEMCEE(self, sample):
+        arr = np.array(sample)[None, :]
         return self.get_likelihoodFromSamplesGAME(arr)
 
     def getGainFluctuationMap(self):
@@ -598,7 +598,8 @@ def get_t21vs1d(freqs, npoints, vs, cmb=False, cosmicdawn=False, **kwargs):
 
 
 def get_fname(args):
-    if args.old: print('using old model')
+    if args.old:
+        print("using old model")
     """for saving model after training"""
     cS = ",".join(args.combineSigma.split())
     pca = ",".join(args.nPCA.split())
@@ -624,7 +625,8 @@ def get_fname(args):
 
 def get_lname(args, plot):
     """for saving likelihood results"""
-    if args.old: print('using old likelihood')
+    if args.old:
+        print("using old likelihood")
     lname = get_fname(args)
     if args.appendLik:
         lname += args.appendLik if args.old else f"like{args.appendLik}"
@@ -703,6 +705,8 @@ class Args:
         appendLik="",
         fgFITS="ulsa.fits",
         freqs="1 51",
+        old=False,
+        llblowupfactor=1.0,
     ):
 
         self.sigma = sigma
@@ -730,9 +734,12 @@ class Args:
         self.appendLik = appendLik
         self.fgFITS = fgFITS
         self.freqs = freqs
+        self.old = old
+        self.llblowupfactor = llblowupfactor
 
     def prettyprint(self):
         print("Using the following args:")
         for arg in vars(self):
             val = str(getattr(self, arg))
             print(f"{arg:20s} {val:20s}")
+        print("--" * 40, "\n")

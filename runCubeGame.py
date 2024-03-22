@@ -69,7 +69,7 @@ if args.retrain:
 
 def like(x):
     return flow.get_likelihoodFromSamplesGAME(
-        x, priorlow=[0.01, 10, 10], priorhigh=[2, 20, 20], llblowupfactor=1.0
+        x, priorlow=[0.01, 10, 10], priorhigh=[10, 30, 30]
     )
 
 
@@ -88,9 +88,9 @@ cornerkwargs = {
     "show_titles": True,
     "levels": [1 - np.exp(-0.5), 1 - np.exp(-2)],
     "bins": 50,
-    "range": [(0.8, 1.2), (18, 22), (65, 70)] if cosmicdawn
-    # else [(0.8, 1.2), (12, 16), (15.6, 17)],
-    else [(0.1, 10), (1, 25), (1, 30)],
+    # "range": [(0.8, 1.2), (18, 22), (65, 70)] if cosmicdawn
+    # # else [(0.8, 1.2), (12, 16), (15.6, 17)],
+    # else [(0.1, 10), (1, 25), (1, 30)],
     "labels": [r"A", r"$\nu_{\rm rms}$", r"$\nu_{\rm min}$"],
     "truths": [1, 20, 67.5] if cosmicdawn else [1.0, 14.0, 16.4],
     "plot_datapoints": True,
@@ -120,7 +120,15 @@ def plotel(G):
     )
 
 
+lname = nf.get_lname(args, plot="all")
+print(f"saving corner likelihood results to {lname}")
+np.savetxt(
+    lname,
+    np.column_stack([samples, loglikelihoods]),
+    header="amp,width,numin,loglikelihood",
+)
 fig = corner.corner(samples, weights=nf.exp(loglikelihoods), **cornerkwargs)
+
 for ga in cg.Games:
     for G in ga.Gausses:
         plotel(G)
@@ -129,11 +137,3 @@ cname = nf.get_lname(args, plot="corner")
 cname += ".pdf"
 print(f"saving corner plot pdf to {cname}")
 plt.savefig(cname, dpi=300)
-
-lname = nf.get_lname(args, plot="all")
-print(f"saving corner likelihood results to {lname}")
-np.savetxt(
-    lname,
-    np.column_stack([samples, loglikelihoods]),
-    header="amp,width,numin,loglikelihood",
-)
