@@ -32,6 +32,7 @@ else:
     print("\n\nno corner plot")
 
 print("\n\nalso found similar models:")
+args.noiseSeed = "*"
 args.append = "*"
 fname = get_fname(args)
 for f in glob.glob(fname):
