@@ -1,7 +1,4 @@
-# Example:
-# python runCubeGame.py --noise 0.0 --combineSigma '4 6' --freqs '1 51' --fgFITS 'ulsa.fits'
-
-import cubegamesampler
+import pyswarms
 import numpy as np
 import torch
 import NormalizingFlow as nf
@@ -9,6 +6,9 @@ import lusee
 import parser
 import corner
 import matplotlib.pyplot as plt
+
+# Example:
+# python runPSO.py --noise 0.0 --combineSigma '4 6' --freqs '1 51' --fgFITS 'ulsa.fits'
 
 ##---------------------------------------------------------------------------##
 # argparser block
@@ -21,7 +21,7 @@ args.noisyT21 = True
 args.diffCombineSigma = True
 
 if args.appendLik == "":
-    args.appendLik = "_cubegame"
+    args.appendLik = "_PSO"
 
 parser.prettyprint(args)
 
@@ -77,65 +77,11 @@ def like(x):
         x, priorlow=priorlow, priorhigh=priorhigh
     )
 
-
-cg = cubegamesampler.CubeGame(like, start)
-
-cg.run(nGame=5)
+# c1: local preference, c2: global preference
+options = {'c1': 1.0, 'c2': 1.0, 'w':1.0}
+bounds = ([0.01,1,1],[10,40,40])
+optimizer = pyswarms.single.GlobalBestPSO(n_particles=10000, dimensions=3, options=options, bounds=bounds)
+cost, pos = optimizer.optimize(like, iters=50)
 
 ##---------------------------------------------------------------------------##
-# save block
-
-samples = cg.samples
-loglikelihoods = cg.loglikelihoods
-
-
-cornerkwargs = {
-    "show_titles": True,
-    "levels": [1 - np.exp(-0.5), 1 - np.exp(-2)],
-    "bins": 50,
-    # "range": [(0.8, 1.2), (18, 22), (65, 70)] if cosmicdawn
-    # # else [(0.8, 1.2), (12, 16), (15.6, 17)],
-    # else [(0.1, 10), (1, 25), (1, 30)],
-    "labels": [r"A", r"$\nu_{\rm rms}$", r"$\nu_{\rm min}$"],
-    "truths": [1, 20, 67.5] if cosmicdawn else [1.0, 14.0, 16.4],
-    "plot_datapoints": True,
-}
-
-
-def plotel(G):
-    global fig
-    cov = G.cov
-    val, vec = np.linalg.eig(cov)
-    vec = vec.T
-
-    vec[0] *= np.sqrt(np.real(val[0]))
-    vec[1] *= np.sqrt(np.real(val[1]))
-    corner.overplot_points(fig, G.mean[None], c="b", marker="o", ms=1.0)
-    corner.overplot_points(
-        fig, [G.mean - vec[0], G.mean + vec[0]], c="r", marker="", linestyle="-", lw=0.5
-    )
-    corner.overplot_points(
-        fig, [G.mean - vec[1], G.mean + vec[1]], c="r", marker="", linestyle="-", lw=0.5
-    )
-    corner.overplot_points(
-        fig, [G.mean - vec[2], G.mean + vec[2]], c="r", marker="", linestyle="-", lw=0.5
-    )
-
-
-lname = nf.get_lname(args, plot="all")
-print(f"saving corner likelihood results to {lname}")
-np.savetxt(
-    lname,
-    np.column_stack([samples, loglikelihoods]),
-    header="amp,width,numin,loglikelihood",
-)
-fig = corner.corner(samples, weights=nf.exp(loglikelihoods), **cornerkwargs)
-
-for ga in cg.Games:
-    for G in ga.Gausses:
-        plotel(G)
-plt.suptitle("Cube Game Samples")
-cname = nf.get_lname(args, plot="corner")
-cname += ".pdf"
-print(f"saving corner plot pdf to {cname}")
-plt.savefig(cname, dpi=300)
+breakpoint()

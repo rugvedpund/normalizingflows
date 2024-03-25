@@ -130,7 +130,6 @@ class FlowAnalyzerV2(NormalizingFlow):
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
         device = torch.device("cuda")
-        torch.set_default_device("cuda")
         torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
         if verbose:
