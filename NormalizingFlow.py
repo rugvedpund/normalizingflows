@@ -123,6 +123,16 @@ class FlowAnalyzerV2(NormalizingFlow):
         self.freqs = np.arange(self.fmin, self.fmax)
         self.cosmicdawn = True if args.fgFITS == "gsm16.fits" else False
 
+        print(f"setting noise seed {args.noiseSeed} and torch seed {args.torchSeed}")
+        np.random.seed(args.noiseSeed)
+        torch.manual_seed(args.torchSeed)
+        torch.cuda.manual_seed_all(args.torchSeed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        device = torch.device("cuda")
+        torch.set_default_device("cuda")
+        torch.set_default_tensor_type("torch.cuda.FloatTensor")
+
         if verbose:
             print(f"loading foreground map {args.fgFITS}")
         fgpath = os.path.join(root, args.fgFITS)
