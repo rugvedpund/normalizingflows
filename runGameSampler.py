@@ -4,11 +4,9 @@
 import gamesampler
 import numpy as np
 import torch
-import fitsio
 import NormalizingFlow as nf
 import lusee
 import parser
-import os
 import corner
 import matplotlib.pyplot as plt
 
@@ -67,42 +65,31 @@ if args.retrain:
 ##---------------------------------------------------------------------------##
 # main sampler block
 
-start = [1, 20, 67.5] if cosmicdawn else [1, 14, 16.4]
-breakpoint()
-ga = gamesampler.Game(flow.get_likelihoodFromSamplesGAME, start, sigreg=[0.7, 0.7, 0.7])
+if cosmicdawn:
+    priorlow,priorhigh = [0.01,10,50],[10,40,90]
+    start=[1, 20, 67.5]
+else:
+    priorlow,priorhigh = [0.01,10,10],[10,30,30]
+    start=[1, 14, 16.4]
+
+def like(x):
+    return flow.get_likelihoodFromSamplesGAME(
+        x, priorlow=priorlow, priorhigh=priorhigh
+    )
+
+ga = gamesampler.Game(like, start, sigreg=[0.9, 0.9, 0.9])
 ga.N1 = 1000
-ga.mineffsamp = 5000
+ga.mineffsamp = 100
+ga.maxiter = 30
+ga.blow = 5.0
 ga.run()
 
 ##---------------------------------------------------------------------------##
 # now we plot
 
-
-def plotel(G):
-    global fig
-    cov = G.cov
-    print(G.cov)
-    val, vec = np.linalg.eig(cov)
-    vec = vec.T
-
-    vec[0] *= np.sqrt(np.real(val[0]))
-    vec[1] *= np.sqrt(np.real(val[1]))
-    print(vec[0], "A")
-    print(vec[1], "B")
-    corner.overplot_points(fig, G.mean[None], c="b", marker="o", ms=1.0)
-    corner.overplot_points(
-        fig, [G.mean - vec[0], G.mean + vec[0]], c="r", marker="", linestyle="-", lw=0.5
-    )
-    corner.overplot_points(
-        fig, [G.mean - vec[1], G.mean + vec[1]], c="r", marker="", linestyle="-", lw=0.5
-    )
-    corner.overplot_points(
-        fig, [G.mean - vec[2], G.mean + vec[2]], c="r", marker="", linestyle="-", lw=0.5
-    )
-
-
 samples = np.array([sa.pars for sa in ga.sample_list])
 ww = np.array([sa.we for sa in ga.sample_list]).flatten()
+
 
 cornerkwargs = {
     "show_titles": True,
@@ -117,10 +104,34 @@ cornerkwargs = {
     "plot_datapoints": True,
 }
 
-# # just samples
-# fig = corner.corner(samples, **cornerkwargs)
-# plt.suptitle("Just Samples")
-# plt.show()
+
+def plotel(G):
+    global fig
+    cov = G.cov
+    val, vec = np.linalg.eig(cov)
+    vec = vec.T
+
+    vec[0] *= np.sqrt(np.real(val[0]))
+    vec[1] *= np.sqrt(np.real(val[1]))
+    corner.overplot_points(fig, G.mean[None], c="b", marker="o", ms=1.0)
+    corner.overplot_points(
+        fig, [G.mean - vec[0], G.mean + vec[0]], c="r", marker="", linestyle="-", lw=0.5
+    )
+    corner.overplot_points(
+        fig, [G.mean - vec[1], G.mean + vec[1]], c="r", marker="", linestyle="-", lw=0.5
+    )
+    corner.overplot_points(
+        fig, [G.mean - vec[2], G.mean + vec[2]], c="r", marker="", linestyle="-", lw=0.5
+    )
+
+
+lname = nf.get_lname(args, plot="all")
+print(f"saving corner likelihood results to {lname}")
+np.savetxt(
+    lname,
+    np.column_stack([samples, np.log(ww)]),
+    header="amp,width,numin,loglikelihood",
+)
 
 # weighted samples, with gaussians
 wsumsa = ww / ww.sum()
@@ -130,13 +141,6 @@ for G in ga.Gausses:
 plt.suptitle("Game Samples")
 cname = nf.get_lname(args, plot="corner")
 cname += ".pdf"
+print(f"saving corner plot pdf to {cname}")
 plt.savefig(cname, dpi=300)
 
-breakpoint()
-lname = nf.get_lname(args, plot="all")
-print(f"saving corner likelihood results to {lname}")
-np.savetxt(
-    lname,
-    np.column_stack([samples, np.log(ww)]),
-    header="amp,width,numin,loglikelihood",
-)
