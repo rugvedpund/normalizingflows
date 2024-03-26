@@ -52,13 +52,13 @@ class Game:
         self.fixedcov=False
         self.toexplore=array(par0)
         self.maxiter=30
+        self.Gausses=[]
+        self.SamList=[]
 
     def run(self):
         done=False
         toexplore=self.toexplore
         badlist=[]
-        self.Gausses=[]
-        self.SamList=[]
         while not done:
             sample_list, G=self.isample(toexplore)
             self.Gausses.append(G)

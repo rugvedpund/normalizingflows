@@ -36,13 +36,18 @@ class CubeGame:
             print(f'{"--"*40}')
             print('running game for', sample)
             ga = gamesampler.Game(self.likefunc, sample, sigreg=[0.9] * self.ndim)
-            ga.fixedcov = False
+            for game in self.Games:
+                ga.Gausses+=game.Gausses
+                ga.SamList+=game.SamList
+            ga.fixedcov = True
+            ga.blow=5.0
             ga.N1 = 1000
             ga.mineffsamp = 100
-            ga.maxiter=50
+            ga.maxiter=30
             ga.run()
             print('finished game', i)
             self.Games.append(ga)
+            breakpoint()
 
         self.gamesamples = np.vstack([[sa.pars for sa in ga.sample_list] for ga in self.Games])
         self.samples = np.vstack([self.gamesamples,self.cubesamples])
