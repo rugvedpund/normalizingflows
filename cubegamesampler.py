@@ -29,14 +29,14 @@ class CubeGame:
         self.cubelikes = self.likefunc(self.cubesamples)
         self.topnlikes = np.argsort(self.cubelikes)[-self.nGame:]
         self.topnsamples = self.cubesamples[self.topnlikes]
-        print('found top',self.nGame, 'likelihoods', self.topnlikes)
+        print('found top',self.nGame, 'likelihoods', self.cubelikes[self.topnlikes])
         print('for top', self.nGame, 'samples\n', self.topnsamples)
 
         for i, sample in enumerate(self.topnsamples):
             print(f'{"--"*40}')
             print('running game for', sample)
             ga = gamesampler.Game(self.likefunc, sample, sigreg=[0.9] * self.ndim)
-            ga.fixedcov = False
+            ga.fixedcov = True
             ga.N1 = 1000
             ga.mineffsamp = 100
             ga.maxiter=30
@@ -47,7 +47,8 @@ class CubeGame:
         self.gamesamples = np.vstack([[sa.pars for sa in ga.sample_list] for ga in self.Games])
         self.samples = np.vstack([self.gamesamples,self.cubesamples])
 
-        self.gamelikes = np.hstack([[sa.we for sa in ga.sample_list] for ga in self.Games])
-        self.loglikelihoods = np.hstack([np.log(self.gamelikes),self.cubelikes])
+        self.gamelikes = np.hstack([[sa.like for sa in ga.sample_list] for ga in self.Games])
+        self.gameweights = np.hstack([[sa.we for sa in ga.sample_list] for ga in self.Games])
+        self.loglikelihoods = np.hstack([self.gamelikes,self.cubelikes])
 
         return self.samples, self.loglikelihoods
