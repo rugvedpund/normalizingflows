@@ -20,7 +20,7 @@ def create_parser():
     )  # e.g. '4 6' separated by space
 
     parser.add_argument("--SNRpp", type=float, default=None, required=False)
-    parser.add_argument("--noise", type=float, default=0.0, required=False)
+    parser.add_argument("--noise", type=float, default=None, required=False)
     parser.add_argument("--noiseSeed", type=int, default=0, required=False)
     parser.add_argument("--torchSeed", type=int, default=0, required=False)
     parser.add_argument("--subsampleSigma", type=float, default=2.0, required=False)

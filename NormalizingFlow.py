@@ -605,6 +605,17 @@ def get_t21vs1d(freqs, npoints, vs, cmb=False, cosmicdawn=False, **kwargs):
         t21_vs[:, i] = tDA(xx)
     return samples, t21_vs
 
+def cbrt(n):
+    c= int(np.cbrt(n))
+    if c**3==n:
+        return c
+    if (c+1)**3==n:
+        return c+1
+    if (c-1)**3==n:
+        return c-1
+    else:
+        raise ValueError('stupid cbrt')
+
 
 def get_fname(args):
     if args.old:

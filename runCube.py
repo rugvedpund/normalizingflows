@@ -39,7 +39,6 @@ torch.set_default_tensor_type("torch.cuda.FloatTensor")
 
 
 fname = nf.get_fname(args)
-breakpoint()
 
 print(f"loading flow from {fname}")
 flow = nf.FlowAnalyzerV2(nocuda=False, loadPath=fname)
@@ -66,9 +65,19 @@ if args.retrain:
 ##---------------------------------------------------------------------------##
 # main sampler block
 
-cube = cubesampler.Cube(
-    flow.get_likelihoodFromSamplesGAME, [(0.8, 1.2), (13, 14), (16, 17)]
-)
+if cosmicdawn:
+    priorlow, priorhigh = [0.01, 10, 50], [10, 40, 90]
+    limits = [(0.01, 10), (10, 40), (50, 90)]
+else:
+    priorlow, priorhigh = [0.01, 10, 10], [10, 30, 30]
+    limits = [(0.01, 10), (10, 30), (10, 30)]
+
+
+def like(x):
+    return flow.get_likelihoodFromSamplesGAME(x, priorlow=priorlow, priorhigh=priorhigh)
+
+
+cube = cubesampler.Cube(like, limits=limits)
 cube.run()
 
 ##---------------------------------------------------------------------------##
@@ -90,7 +99,7 @@ cornerkwargs = {
 }
 
 fig = corner.corner(samples, weights=nf.exp(loglikelihood), **cornerkwargs)
-plt.suptitle('Cube Samples')
+plt.suptitle("Cube Samples")
 cname = nf.get_lname(args, plot="corner")
 cname += ".pdf"
 print(f"saving corner plot pdf to {cname}")
