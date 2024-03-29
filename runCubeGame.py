@@ -78,9 +78,10 @@ def like(x):
     )
 
 
+
 cg = cubegamesampler.CubeGame(like, start)
 
-cg.run(nGame=5)
+cg.run(nGame=10)
 
 ##---------------------------------------------------------------------------##
 # save block
