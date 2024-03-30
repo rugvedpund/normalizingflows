@@ -27,17 +27,6 @@ parser.prettyprint(args)
 
 ##---------------------------------------------------------------------------##
 
-# set seed
-print(f"setting noise seed {args.noiseSeed} and torch seed {args.torchSeed}")
-np.random.seed(args.noiseSeed)
-torch.manual_seed(args.torchSeed)
-torch.cuda.manual_seed_all(args.torchSeed)
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
-device = torch.device("cuda")
-torch.set_default_tensor_type("torch.cuda.FloatTensor")
-
-
 fname = nf.get_fname(args)
 
 print(f"loading flow from {fname}")
@@ -67,10 +56,14 @@ if args.retrain:
 
 if cosmicdawn:
     priorlow, priorhigh = [0.01, 10, 50], [10, 40, 90]
-    limits = [(0.01, 10), (10, 40), (50, 90)]
+    # limits = [(0.01, 10), (10, 40), (50, 90)] #cube
+    limits = [(0.6, 2.0), (16, 30), (64, 70)] #smallcube
+    # limits = [(0.8, 1.2), (18, 22), (65, 69)] #xsmallcube
 else:
     priorlow, priorhigh = [0.01, 10, 10], [10, 30, 30]
-    limits = [(0.01, 10), (10, 30), (10, 30)]
+    # limits = [(0.01, 10), (10, 30), (10, 30)] #cube
+    limits = [(0.8, 3), (13, 17), (14, 18)] #smallcube
+    # limits = [(0.8, 1.2), (13, 17), (15, 17)] #xsmallcube
 
 
 def like(x):

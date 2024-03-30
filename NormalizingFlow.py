@@ -30,6 +30,7 @@ class NormalizingFlow:
             self.nlayer = len(self.model.layer)
             if verbose:
                 print("model loaded from ", loadPath)
+                print("number of layers in model: ", len(self.model.layer))
         except FileNotFoundError:
             if verbose:
                 print("no file found, need to train")

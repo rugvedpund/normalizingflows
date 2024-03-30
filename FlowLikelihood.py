@@ -88,7 +88,7 @@ class FlowLikelihood(nf.FlowAnalyzerV2):
 
         final = (self.tfgmeansdata[:, None] - pt21).float().T
 
-        return self.model.evaluate_density(final)
+        return self.model.evaluate_density(final).cpu().numpy()
 
 
 if __name__ == "__main__":

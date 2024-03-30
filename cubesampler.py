@@ -6,14 +6,14 @@ class Cube:
     """
 
     def __init__(self,likefunc,limits):
-        print('starting Cube for',limits)
         self.likefunc = likefunc
         self.limits = limits
         self.ndim = len(limits)
         self.npoints = [71,70,69]
 
     def run(self):
-        self.axes = np.array([np.linspace(ximin,ximax,npoints) for (ximin,ximax),npoints in zip(self.limits,self.npoints)])
+        print('starting Cube for',self.limits,'with',self.npoints,'points')
+        self.axes = [np.linspace(ximin,ximax,npoints) for (ximin,ximax),npoints in zip(self.limits,self.npoints)]
         self.cube = np.meshgrid(*self.axes)
         self.samples = np.vstack([c.ravel() for c in self.cube]).T
         self.nsamples = np.prod(self.npoints)
