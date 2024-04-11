@@ -17,7 +17,7 @@ args.diffCombineSigma = True
 parser.prettyprint(args)
 
 s, ll = nf.get_samplesAndLikelihood(args, plot="all")
-npoints = [70, 71, 69]  # THIS IS WEIRD
+npoints = [70, 71, 69]  # THIS IS WEIRD BUT CORRECT
 print("Total number of samples: ", s.shape)
 print("Max likelihood:", max(ll))
 likelihoods = np.exp((ll - max(ll))).reshape(*npoints)
@@ -188,5 +188,4 @@ plt.figtext(
     ma="center",
 )
 
-plt.suptitle(f"{fg} for {chromatic} {labels[args.combineSigma]}, SNR={args.SNRpp:.0e}")
 plt.show()

@@ -9,7 +9,6 @@ import lusee
 import parser
 import corner
 import matplotlib.pyplot as plt
-import os
 
 ##---------------------------------------------------------------------------##
 # argparser block
@@ -56,69 +55,40 @@ elif args.fgFITS == "gsm16.fits":
     )
     cosmicdawn = True
 flow.set_t21(t21)
-
-if not os.path.exists(fname):
-    print(f"training flow and saving to {fname}")
+if args.retrain:
     flow.train(
         flow.train_data, flow.validate_data, nocuda=False, savePath=fname, retrain=True
     )
-
-# if args.retrain:
-#     flow.train(
-#         flow.train_data, flow.validate_data, nocuda=False, savePath=fname, retrain=True
-#     )
 
 ##---------------------------------------------------------------------------##
 # main sampler block
 
 if cosmicdawn:
-    priorlow, priorhigh = [0.01, 10, 50], [10, 40, 90]
-    limits = [(0.01, 10), (10, 40), (50, 90)] #cube
-    # limits = [(0.6, 2.0), (16, 30), (64, 70)] #smallcube
-    # limits = [(0.8, 1.2), (18, 22), (65, 69)] #xsmallcube
+    priorlow, priorhigh = [0.01, 10, 50], [1000, 40, 90]
 else:
-    priorlow, priorhigh = [0.01, 10, 10], [10, 30, 30]
-    limits = [(0.01, 10), (10, 30), (10, 30)] #cube
-    # limits = [(0.8, 3), (13, 17), (14, 18)] #smallcube
-    # limits = [(0.8, 1.2), (13, 17), (15, 17)] #xsmallcube
+    priorlow, priorhigh = [0.01, 10, 10], [1000, 30, 30]
 
 
 def like(x):
     return flow.get_likelihoodFromSamplesGAME(x, priorlow=priorlow, priorhigh=priorhigh)
 
 
-cube = cubesampler.Cube(like, limits=limits)
-cube.run()
+truth = [1., 20., 67.5] if cosmicdawn else [1., 14., 16.4]
+amin, amax = 0.01, 100
+npoints = 10000
+amp = np.logspace(np.log(amin), np.log(amax), npoints, base=10)
+width = truth[1] * np.ones(npoints)
+numin = truth[2] * np.ones(npoints)
+samples = np.vstack([amp, width, numin]).T
 
-##---------------------------------------------------------------------------##
-# save block
+loglikelihoods = like(samples)
 
-samples = cube.samples
-loglikelihood = cube.cubelikes
+# save
 
-lname = nf.get_lname(args, plot="all")
+lname = nf.get_lname(args, plot="A")
 print(f"saving likelihood results to {lname}")
 np.savetxt(
     lname,
-    np.column_stack([samples, loglikelihood]),
+    np.column_stack([samples, loglikelihoods]),
     header="amp,width,numin,loglikelihood",
 )
-
-# cornerkwargs = {
-#     "show_titles": True,
-#     "levels": [1 - np.exp(-0.5), 1 - np.exp(-2)],
-#     "bins": 50,
-#     "range": [(0.8, 1.2), (18, 22), (65, 70)] if cosmicdawn
-#     # else [(0.8, 1.2), (12, 16), (15.6, 17)],
-#     else [(0.1, 10), (1, 25), (1, 40)],
-#     "labels": [r"A", r"$\nu_{\rm rms}$", r"$\nu_{\rm min}$"],
-#     "truths": [1, 20, 67.5] if cosmicdawn else [1.0, 14.0, 16.4],
-#     "plot_datapoints": False,
-# }
-
-# fig = corner.corner(samples, weights=nf.exp(loglikelihood), **cornerkwargs)
-# plt.suptitle("Cube Samples")
-# cname = nf.get_lname(args, plot="corner")
-# cname += ".pdf"
-# print(f"saving corner plot pdf to {cname}")
-# plt.savefig(cname, dpi=300)

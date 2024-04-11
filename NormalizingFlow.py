@@ -399,14 +399,16 @@ class FlowAnalyzerV2(NormalizingFlow):
     ):
         assert t21_vsdata.shape == (self.nfreq * self.nsigmas, t21_vsdata.shape[1])
         freqs = np.tile(self.freqs, self.nsigmas)
-        flowt21data_fF = (
-            self.t21data
-            if debugfF
-            else (1 + freqFluctuationLevel * np.cos(6 * np.pi / 50 * freqs))
-            * self.t21data
-        )
+        flowt21data = self.t21data.copy()
+        if debugfF:
+            raise NotImplementedError
+        if freqFluctuationLevel!=0.0:
+            print(f'apply freqFluctuation {freqFluctuationLevel*100}%')
+            fFluctuation = freqFluctuationLevel * np.cos(6 * np.pi / 50 * freqs)
+            flowt21data += self.t21data.copy() * fFluctuation
+
         l = (
-            self.fgmeansdata[:, None] + DA_factor * flowt21data_fF[:, None] - t21_vsdata
+            self.fgmeansdata[:, None] + DA_factor * flowt21data[:, None] - t21_vsdata
         ).T
         return self._likelihood(l, end).cpu().numpy()
 
@@ -606,16 +608,17 @@ def get_t21vs1d(freqs, npoints, vs, cmb=False, cosmicdawn=False, **kwargs):
         t21_vs[:, i] = tDA(xx)
     return samples, t21_vs
 
+
 def cbrt(n):
-    c= int(np.cbrt(n))
-    if c**3==n:
+    c = int(np.cbrt(n))
+    if c ** 3 == n:
         return c
-    if (c+1)**3==n:
-        return c+1
-    if (c-1)**3==n:
-        return c-1
+    if (c + 1) ** 3 == n:
+        return c + 1
+    if (c - 1) ** 3 == n:
+        return c - 1
     else:
-        raise ValueError('stupid cbrt')
+        raise ValueError("stupid cbrt")
 
 
 def get_fname(args):
@@ -692,9 +695,7 @@ def get_constraints(s, ll):
         out[params[i] + "+"] = h - m
         out[params[i] + "-"] = m - l
         out[params[i] + "+-"] = h2 - l2
-    # out['amp']*=40.0
-    # out['amp+']*=40.0
-    # out['amp-']*=40.0
+        out[params[i] + "++"] = h2
     return out
 
 
