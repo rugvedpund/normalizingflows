@@ -24,9 +24,9 @@ truths = [1, 20, 67.5] if cosmicdawn else [1, 14, 16.4]
 ranges = (
     # [(0,5), (19, 21), (66, 69)] if cosmicdawn else [(0, 10), (1, 30), (1, 30)]
     # [(0,5), (19, 21), (66, 69)] if cosmicdawn else [(0, 2), (10, 20), (10, 20)]
-    [(0, 5), (19, 21), (66, 69)]
+    [(0, 2), (19, 21), (66, 69)]
     if cosmicdawn
-    else [(0.5, 1.5), (13.5, 14.5), (16, 16.6)]
+    else [(0.8, 1.6), (14.0, 15.0), (16, 16.6)]
     # [(0,5), (19, 21), (66, 69)] if cosmicdawn else [(0, 2), (1, 30), (1, 30)]
 )
 fg = "CD" if cosmicdawn else "DA"
@@ -38,14 +38,14 @@ labels = {
 cornerkwargs = {
     "show_titles": True,
     "levels": [1 - np.exp(-0.5), 1 - np.exp(-2)],
-    "bins": 50,
+    "bins": 60,
     # "range": ranges,
     "labels": [r"A", r"$\nu_{\rm rms}$", r"$\nu_{\rm min}$"],
-    "plot_datapoints": True,
+    "plot_datapoints": False,
     "truths": truths,
-    # "no_fill_contours":True,
-    # "plot_contours":False,
-    # "pcolor_kwargs":{"cmap":"viridis"},
+    "no_fill_contours":True,
+    "plot_contours":False,
+    "pcolor_kwargs":{"cmap":"viridis"},
     # "hist_kwargs":{"density": True},
 }
 
@@ -55,6 +55,7 @@ cornerkwargs = {
 
 s, ll = nf.get_samplesAndLikelihood(args, plot="all")
 print("Total number of samples: ", s.shape)
+print("Max likelihood:", max(ll))
 fig = corner.corner(s, weights=nf.exp(ll), **cornerkwargs)
 # corner.overplot_lines(fig, truths, color="k", ls="--", lw=1)
 plt.figtext(
@@ -66,5 +67,3 @@ plt.figtext(
     ma="center",
 )
 plt.show()
-
-# savefig should be available via the matplotlib gui

@@ -11,8 +11,8 @@ root = os.path.abspath("/home/rugved/Files/LuSEE/normalizingflows/")
 args = nf.Args()
 args.appendLik = "_cmb"
 
-args.fgFITS, args.freqs, args.chromatic = "ulsa.fits", "1 51", False
-# args.fgFITS, args.freqs, args.chromatic = "gsm16.fits", "51 101", False
+# args.fgFITS, args.freqs, args.chromatic = "ulsa.fits", "1 51", False
+args.fgFITS, args.freqs, args.chromatic = "gsm16.fits", "51 101", False
 
 ##---------------------------------------------------------------------------##
 # plot params
@@ -27,7 +27,7 @@ labels = {
 }
 fg = "Cosmic Dawn" if cosmicdawn else "Dark Ages"
 # snrpps = [1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12]
-snrpps = [1e24,1e4,1e5] if cosmicdawn else [1e24, 1e5, 1e7]
+snrpps = [1e24,1e4,1e6] if cosmicdawn else [1e24, 1e5, 1e7]
 seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 combineSigmas = ["", "4 6"]
 truth = 2.725
@@ -88,6 +88,7 @@ print(root)
 fname = os.path.join(root,f"plots/{fg}_CMB.pdf")
 print("saving to ", fname)
 plt.savefig(fname, dpi=300, bbox_inches=None)
+
 plt.show()
 
 
