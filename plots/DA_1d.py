@@ -5,16 +5,17 @@ import pandas as pd
 
 args = nf.Args()
 
-args.fgFITS, args.freqs='gsm16.fits', '51 101'
-# args.fgFITS, args.freqs = "ulsa.fits", "1 51"
+# args.fgFITS, args.freqs='gsm16.fits', '51 101'
+args.fgFITS, args.freqs = "ulsa.fits", "1 51"
 # args.chromatic = False
 args.chromatic = True
 
 # snrpps = [1e4, 1e5, 1e6]
-snrpps = [1e5, 1e6, 1e7]
+# snrpps = [1e5, 1e6, 1e7]
 # snrpps = [1e7, 1e8, 1e9]
 # snrpps = [1e8, 1e9, 1e10]
-# snrpps = [1e9, 1e10, 1e11]
+snrpps = [1e9, 1e10, 1e11]
+# snrpps = [1e9, 1e12, 1e24]
 
 args.appendLik = "_1D"
 seeds = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -96,7 +97,9 @@ plt.xlim(0.01 * afactor, 1e4)
 plt.xscale("log")
 plt.title(f"{fg} Signal Amplitude Likelihood - {chromatic} Beam")
 plt.legend()
-fname = f"{fg}_{chromatic}_1dAmp.pdf"
-print("saving to ", fname)
-plt.savefig(fname, dpi=300, bbox_inches="tight")
+
+# fname = f"{fg}_{chromatic}_1dAmp.pdf"
+# print("saving to ", fname)
+# plt.savefig(fname, dpi=300, bbox_inches="tight")
+
 plt.show()

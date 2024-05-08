@@ -22,19 +22,19 @@ if __name__ == "__main__":
     else:
         print("\n\nmodel missing")
 
-    lname = get_lname(args, plot="all")
+    lname = get_lname(args, plot="A")
     if path.exists(lname):
         print("\n\nlikelihood found")
         print(lname)
     else:
         print("\n\nlikelihood missing")
 
-    cname = get_lname(args, plot="corner") + ".pdf"
-    if path.exists(cname):
-        print("\n\ncorner plot found")
-        print(cname)
-    else:
-        print("\n\nno corner plot")
+    # cname = get_lname(args, plot="corner") + ".pdf"
+    # if path.exists(cname):
+    #     print("\n\ncorner plot found")
+    #     print(cname)
+    # else:
+    #     print("\n\nno corner plot")
 
     print("\n\nalso found similar models:")
     args.noiseSeed = "*"
@@ -51,9 +51,10 @@ if __name__ == "__main__":
     for f in glob.glob(lname):
         print(f)
 
-    print("\n\nand galcut")
+    print("\n\nand galcuts")
+    args.appendLik = ""
     args.galcut = "*"
-    lname = get_lname(args, plot="all")
+    lname = get_lname(args, plot="A")
     print(lname)
     for f in glob.glob(lname):
         print(f)

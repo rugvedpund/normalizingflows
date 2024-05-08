@@ -1,4 +1,3 @@
-# create the Dark Ages combineSigmas 3D plot
 # %%
 
 import NormalizingFlow as nf
@@ -13,8 +12,8 @@ root = '~/Files/LuSEE/normalizingflows/'
 
 args = nf.Args()
 args.fgFITS, args.freqs, args.chromatic = "gsm16.fits", "51 101", False
-args.SNRpp = 1e24
-args.appendLik = "_game"
+args.SNRpp = 1e7
+args.appendLik = "_smallcube"
 
 cosmicdawn = True if args.fgFITS == "gsm16.fits" else False
 colors = {"": "gray", "4": "C2", "4 6": "C3"}
@@ -25,17 +24,17 @@ labels = {
     "4 6": r"$2^\circ+4^\circ+6^\circ$",
 }
 ranges = (
-    [(110, 150), (18, 22), (65, 70)] if cosmicdawn else [(30, 60), (13.5, 16), (15, 18)]
+    [(120, 160), (18, 23), (66, 69)] if cosmicdawn else [(30, 60), (13.5, 16), (15, 18)]
 )
 fg = "Cosmic Dawn" if cosmicdawn else "Dark Ages"
 cornerkwargs = {
-    "show_titles": True,
+    "show_titles": False,
     "levels": [1 - np.exp(-0.5), 1 - np.exp(-2)],
-    "bins": 50,
+    # "bins": 50,
     "range": ranges,
     "labels": [r"A", r"$\nu_{\rm rms}$", r"$\nu_{\rm min}$"],
     "plot_datapoints": False,
-    # "hist_kwargs":{"density": True},
+    "hist_kwargs":{"density": True},
 }
 # do i need hist_kwargs={"density": True}
 
@@ -84,8 +83,3 @@ plt.suptitle(f"{fg} SNR={args.SNRpp:.0e}")
 plt.show()
 
 # %%
-
-
-fname = f"{root}plots/test.pdf"
-print("saving to ", fname)
-plt.savefig(fname, dpi=300, bbox_inches=None)

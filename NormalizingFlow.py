@@ -244,6 +244,7 @@ class FlowAnalyzerV2(NormalizingFlow):
         self.fgmeans_ss = self.fgss.mean(axis=1)
 
         # do SVD
+        print('doing SVD...')
         self.eve, self.eva, self.vt = np.linalg.svd(
             self.fgss - self.fgss.mean(axis=1)[:, None]
         )
@@ -289,6 +290,7 @@ class FlowAnalyzerV2(NormalizingFlow):
             print(f"done! {self.train_data.shape=},{self.validate_data.shape=} ready")
 
     def set_t21(self, t21):
+        t21 = t21.copy()
         if self.args.noisyT21:
             t21 += self.noise.mean(axis=1)
         if self.avgAdjacentFreqBins:
@@ -359,9 +361,11 @@ class FlowAnalyzerV2(NormalizingFlow):
     def smooth(self, fg, sigma, chromatic):
         if verbose:
             print(f"smoothing with {sigma} deg, and chromatic {chromatic}")
+            # print(f"smoothing with {sigma} deg, and chromatic {chromatic}, with new pivot at 70MHz")
         fgsmooth = np.zeros_like(fg)
         for fi, f in enumerate(self.freqs):
             sigma_f = sigma * (10.0 / (f)) if chromatic else sigma
+            # sigma_f = sigma * (70.0 / (f)) if chromatic else sigma
             fgsmooth[fi, :] = hp.sphtfunc.smoothing(
                 fg[fi, :], sigma=np.deg2rad(sigma_f)
             )

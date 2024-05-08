@@ -40,12 +40,12 @@ dq = quantiles[2] - quantiles[0]
 maxll = s[np.argmax(ll), 0]
 for x in quantiles:
     plt.axvline(2.718 * x, c="k", alpha=0.5, lw=0.5)
-# plt.axvline(40,color='k')
+plt.axvline(2.718,color='k',label='Truth')
 plt.plot(2.718 * s, nf.exp(ll))
 plt.xscale("log")
 plt.text(10, 0.9, rf'Amplitude {2.718*quantiles[1]:.3f} +/-{2.718*dq:.3f} K')
 plt.text(10,0.8, rf'$\leq$ {2.718*quantiles[3]:.3f} K 95\% CL')
-# plt.xlim(3e3,5e3)
+plt.xlim(0.3,300)
 plt.title(
         suptitle
 )

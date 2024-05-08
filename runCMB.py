@@ -16,10 +16,10 @@ args = argparser.parse_args()
 
 # must have --noisyT21 and --diffCombineSigma!!!
 args.noisyT21 = True
-args.diffCombineSigma = True
+args.diffCombineSigma = False
 
-if args.appendLik == "":
-    args.appendLik = "_cmb"
+# if args.appendLik == "":
+#     args.appendLik = "_cmb"
 
 parser.prettyprint(args)
 
@@ -69,7 +69,10 @@ vs = "A"
 print(f"getting 1d likelihood for {vs}...")
 samples1d, t21_vs1d = nf.get_t21vs1d(flow.freqs, npoints, vs, cmb=True, **kwargs)
 print(t21_vs1d)
+print(t21_vs1d.shape)
 t21vsdata1d = flow.proj_t21(t21_vs1d)
+print(t21vsdata1d.shape)
+import ipdb; ipdb.set_trace()
 likelihood1d = flow.get_likelihood(
     t21vsdata1d, args.freqFluctuationLevel, args.DA_factor, debugfF=False
 )

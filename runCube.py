@@ -21,9 +21,6 @@ args = argparser.parse_args()
 args.noisyT21 = True
 args.diffCombineSigma = True
 
-if args.appendLik == "":
-    args.appendLik = "_cube"
-
 parser.prettyprint(args)
 
 ##---------------------------------------------------------------------------##
@@ -57,16 +54,16 @@ elif args.fgFITS == "gsm16.fits":
     cosmicdawn = True
 flow.set_t21(t21)
 
-if not os.path.exists(fname):
-    print(f"training flow and saving to {fname}")
-    flow.train(
-        flow.train_data, flow.validate_data, nocuda=False, savePath=fname, retrain=True
-    )
-
-# if args.retrain:
+# if not os.path.exists(fname):
+#     print(f"training flow and saving to {fname}")
 #     flow.train(
 #         flow.train_data, flow.validate_data, nocuda=False, savePath=fname, retrain=True
 #     )
+
+if args.retrain:
+    flow.train(
+        flow.train_data, flow.validate_data, nocuda=False, savePath=fname, retrain=True
+    )
 
 ##---------------------------------------------------------------------------##
 # main sampler block

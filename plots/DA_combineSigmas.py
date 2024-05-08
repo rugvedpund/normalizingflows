@@ -13,8 +13,8 @@ root = '~/Files/LuSEE/normalizingflows/'
 
 args = nf.Args()
 args.fgFITS, args.freqs, args.chromatic = "ulsa.fits", "1 51", False
-args.SNRpp = 1e24
-args.appendLik = "_walkers"
+args.SNRpp = 1e9
+args.appendLik = "_cube"
 
 cosmicdawn = True if args.fgFITS == "gsm16.fits" else False
 colors = {"": "gray", "4": "C2", "4 6": "C3"}
@@ -25,16 +25,20 @@ labels = {
     "4 6": r"$2^\circ+4^\circ+6^\circ$",
 }
 ranges = (
-    [(110, 150), (18, 22), (65, 70)] if cosmicdawn else [(30, 60), (13.5, 16), (15, 18)]
+    [(110, 150), (18, 22), (65, 70)] if cosmicdawn else [(30, 100), (13.5, 16), (15, 18)]
 )
 fg = "Cosmic Dawn" if cosmicdawn else "Dark Ages"
 cornerkwargs = {
-    "show_titles": True,
+    "show_titles": False,
     "levels": [1 - np.exp(-0.5), 1 - np.exp(-2)],
-    "bins": 50,
-    "range": ranges,
+    "bins": 40,
+    # "range": ranges,
     "labels": [r"A", r"$\nu_{\rm rms}$", r"$\nu_{\rm min}$"],
-    "plot_datapoints": True,
+    "plot_datapoints": False,
+    # "truths": truths,
+    "no_fill_contours":True,
+    "plot_contours":False,
+    "pcolor_kwargs":{"cmap":"Greys"},
     # "hist_kwargs":{"density": True},
 }
 # do i need hist_kwargs={"density": True}
@@ -86,6 +90,6 @@ plt.show()
 # %%
 
 
-fname = f"{root}plots/test.pdf"
-print("saving to ", fname)
-plt.savefig(fname, dpi=300, bbox_inches=None)
+# fname = f"{root}plots/test.pdf"
+# print("saving to ", fname)
+# plt.savefig(fname, dpi=300, bbox_inches=None)

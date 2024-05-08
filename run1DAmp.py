@@ -20,9 +20,6 @@ args = argparser.parse_args()
 args.noisyT21 = True
 args.diffCombineSigma = True
 
-if args.appendLik == "":
-    args.appendLik = "_cube"
-
 parser.prettyprint(args)
 
 ##---------------------------------------------------------------------------##
