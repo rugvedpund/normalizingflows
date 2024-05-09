@@ -5,16 +5,16 @@ import pandas as pd
 
 args = nf.Args()
 
-# args.fgFITS, args.freqs='gsm16.fits', '51 101'
-args.fgFITS, args.freqs = "ulsa.fits", "1 51"
+args.fgFITS, args.freqs='gsm16.fits', '51 101'
+# args.fgFITS, args.freqs = "ulsa.fits", "1 51"
 # args.chromatic = False
 args.chromatic = True
 
 # snrpps = [1e4, 1e5, 1e6]
-# snrpps = [1e5, 1e6, 1e7]
+snrpps = [1e5, 1e6, 1e7]
 # snrpps = [1e7, 1e8, 1e9]
 # snrpps = [1e8, 1e9, 1e10]
-snrpps = [1e9, 1e10, 1e11]
+# snrpps = [1e9, 1e10, 1e11]
 # snrpps = [1e9, 1e12, 1e24]
 
 args.appendLik = "_1D"
@@ -31,6 +31,19 @@ alphas = {"": 0.05, "4": 0.1, "4 6": 0.3}
 chromatic = "Chromatic" if args.chromatic else "Achromatic"
 fg = "Dark Ages" if args.fgFITS == "ulsa.fits" else "Cosmic Dawn"
 afactor = 40 if args.fgFITS == "ulsa.fits" else 130
+snrpplabels = {
+    1e4: r"SNR=$10^4$",
+    1e5: r"SNR=$10^5$",
+    1e6: r"SNR=$10^6$",
+    1e7: r"SNR=$10^7$",
+    1e8: r"SNR=$10^8$",
+    1e9: r"SNR=$10^9$",
+    1e10: r"SNR=$10^{10}$",
+    1e11: r"SNR=$10^{11}$",
+    1e12: r"SNR=$10^{12}$",
+    1e13: r"$10^{13}$",
+    1e24: "Noiseless",
+}
 
 rawdata = list()
 for snrpp in snrpps:
@@ -86,9 +99,9 @@ for snrpp in snrpps:
 
 # clean legend and axes
 for snrpp in snrpps:
-    plt.plot([], [], c="k", ls=lstyles[snrpps.index(snrpp)], label=rf"SNR={snrpp:.0e}")
+    plt.plot([], [], c="k", ls=lstyles[snrpps.index(snrpp)],label=rf"{snrpplabels[snrpp]}")
 for cs in combineSigmas:
-    plt.plot([], [], c=colors[cs], label=labels[cs])
+    plt.plot([], [], c=colors[cs], label=labels[cs], lw=4.0)
 plt.axvline(afactor, color="k", ls="--", label="Truth")
 plt.ylabel("Likelihood")
 plt.xlabel("Amplitude [mK]")
@@ -98,8 +111,8 @@ plt.xscale("log")
 plt.title(f"{fg} Signal Amplitude Likelihood - {chromatic} Beam")
 plt.legend()
 
-# fname = f"{fg}_{chromatic}_1dAmp.pdf"
-# print("saving to ", fname)
-# plt.savefig(fname, dpi=300, bbox_inches="tight")
+fname = f"{fg}_{chromatic}_1dAmp.pdf"
+print("saving to ", fname)
+plt.savefig(fname, dpi=300, bbox_inches="tight")
 
 plt.show()
